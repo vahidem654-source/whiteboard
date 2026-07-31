@@ -1,0 +1,17 @@
+{
+  "name": "تخته‌آموز - ساخت کلیپ آموزشی",
+  "short_name": "تخته‌آموز",
+  "description": "تخته سفید/سیاه برای ساخت کلیپ آموزشی و کلاس آنلاین",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#151210",
+  "theme_color": "#4a3626",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
