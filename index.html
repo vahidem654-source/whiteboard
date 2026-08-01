@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>تخته‌آموز | ساخت کلیپ آموزشی</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#161a20">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --wood-1:#1b2029;
+  --wood-2:#242b38;
+  --wood-edge:#0f1218;
+  --chalk-yellow:#ffb020;
+  --accent-2:#7c8cff;
+  --marker-red:#ff5470;
+  --marker-red-dark:#e13f5c;
+  --panel-text:#f2f5f8;
+  --panel-text-dim:#8b95a6;
+  --board-white:#f6f7f9;
+  --board-white-line:#e3e6ea;
+  --board-black:#14181e;
+  --board-black-line:#242b33;
+  --ink-day:#1c2530;
+  --ink-night:#f2f5f7;
+  --accent-ink:#2b1a02;
+}
+*{box-sizing:border-box;}
+html,body{
+  margin:0;padding:0;height:100%;font-family:'Vazirmatn',sans-serif;overflow:hidden;
+  background-color:#0a0c10;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size:34px 34px;
+}
+#app{height:100%;display:flex;flex-direction:column;position:relative;}
+
+/* shared icon glyphs */
+.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em;flex:0 0 auto;}
+
+/* ---------- toolbar ---------- */
+/* ---------- toolbar drawer handle ---------- */
+.toolbar-handle{
+  position:relative;z-index:65;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:rgba(255,255,255,.04);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  color:var(--panel-text-dim);font-size:12px;font-weight:600;
+  padding:8px;cursor:pointer;user-select:none;transition:color .15s,background .15s;
+}
+.toolbar-handle:hover{background:rgba(255,255,255,.08);color:var(--panel-text);}
+.toolbar-handle .chev{transition:transform .25s;font-size:14px;color:var(--chalk-yellow);}
+.toolbar-handle.open .chev{transform:rotate(180deg);}
+.toolbar-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:58;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.toolbar-backdrop.show{opacity:1;pointer-events:auto;}
+
+.toolbar{
+  position:absolute;top:37px;left:0;right:0;z-index:60;
+  max-height:76vh;overflow-y:auto;
+  transform:translateY(-16px);opacity:0;pointer-events:none;
+  transition:transform .22s ease, opacity .18s ease;
+  background:rgba(15,17,20,.94);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  border-radius:0 0 16px 16px;
+  color:var(--panel-text);
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;flex-wrap:wrap;
+  box-shadow:0 12px 30px rgba(0,0,0,.4);
+}
+.toolbar.open{transform:translateY(0);opacity:1;pointer-events:auto;}
+.brand{font-weight:800;font-size:17px;letter-spacing:.2px;display:flex;align-items:center;gap:7px;white-space:nowrap;}
+.brand .dot{width:10px;height:10px;border-radius:3px;background:var(--chalk-yellow);display:inline-block;box-shadow:0 0 12px rgba(255,176,32,.6);}
+.brand span{color:var(--panel-text);}
+.divider{width:1px;align-self:stretch;background:rgba(255,255,255,.1);margin:2px 4px;}
+.group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+button.tool{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.09);
+  color:var(--panel-text);
+  border-radius:10px;
+  width:38px;height:38px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:17px;
+  transition:transform .1s, background .15s, box-shadow .15s;
+}
+button.tool:hover{background:rgba(255,255,255,.1);}
+button.tool.active{background:var(--chalk-yellow);color:var(--accent-ink);border-color:transparent;box-shadow:0 0 0 3px rgba(255,176,32,.22);transform:translateY(-1px);}
+button.tool:active{transform:scale(.94);}
+
+button.pill{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:var(--panel-text);
+  border-radius:20px;padding:8px 14px;font-family:inherit;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;
+}
+button.pill:hover{background:rgba(255,255,255,.16);}
+button.pill.danger{background:var(--marker-red);border-color:transparent;color:#fff;font-weight:700;}
+button.pill.danger:hover{background:var(--marker-red-dark);}
+button.pill.rec-active{animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,75,106,.55);}50%{box-shadow:0 0 0 8px rgba(239,75,106,0);}}
+
+input[type=color]{width:34px;height:34px;border:none;border-radius:8px;background:none;cursor:pointer;padding:0;}
+input[type=color]::-webkit-color-swatch-wrapper{padding:2px;}
+input[type=color]::-webkit-color-swatch{border-radius:7px;border:1px solid rgba(0,0,0,.3);}
+
+.size-wrap{display:flex;align-items:center;gap:6px;color:var(--panel-text-dim);font-size:12px;}
+input[type=range]{width:90px;accent-color:var(--chalk-yellow);}
+#sizeDot{border-radius:50%;background:#111;border:1px solid rgba(255,255,255,.4);}
+
+label.file-btn{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:var(--panel-text);
+  border-radius:20px;padding:8px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;
+}
+label.file-btn:hover{background:rgba(255,255,255,.16);}
+label.file-btn input{display:none;}
+
+select#quality{
+  background:rgba(255,255,255,.08);color:var(--panel-text);border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:7px 10px;font-family:inherit;font-size:12px;
+}
+select#quality option{color:#222;}
+
+/* ---------- stage ---------- */
+.stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:#0b0d10;overflow:hidden;padding:16px;}
+.board-frame{
+  position:relative;border:1px solid rgba(255,255,255,.08);border-radius:18px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+  background:var(--wood-1);
+  max-width:100%;max-height:100%;
+  aspect-ratio:16/9;
+  width:min(100%, 154vh);
+  transition:background .4s;
+  overflow:hidden;
+  padding:5px;
+}
+.board-wrap{position:relative;width:100%;height:100%;border-radius:12px;overflow:hidden;cursor:crosshair;}
+.board-wrap.pan-mode{cursor:grab;}
+#zoomLayer{position:relative;width:100%;height:100%;transform-origin:0 0;}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+#drawCanvas{touch-action:none;}
+#zoomReset{
+  position:absolute;top:14px;right:14px;z-index:22;background:rgba(15,17,20,.75);color:#fff;
+  border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:6px 12px;font-size:12px;
+  font-family:inherit;cursor:pointer;backdrop-filter:blur(6px);
+}
+
+.page-nav{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;background:rgba(15,17,20,.7);
+  padding:6px 10px;border-radius:20px;color:#fff;font-size:12px;backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.08);
+}
+.page-nav button{background:rgba(255,255,255,.12);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;}
+.page-nav button:hover{background:rgba(255,255,255,.25);}
+
+/* camera bubble */
+#camBubble{
+  position:absolute;width:170px;height:170px;border-radius:50%;
+  overflow:hidden;border:3px solid var(--chalk-yellow);box-shadow:0 8px 22px rgba(0,0,0,.45);
+  cursor:grab;display:none;bottom:16px;right:16px;
+}
+#camBubble.show{display:block;}
+#camBubble video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+#camBubble .resize{
+  position:absolute;bottom:2px;left:2px;width:16px;height:16px;background:var(--chalk-yellow);
+  border-radius:50%;cursor:nwse-resize;border:2px solid var(--accent-ink);
+}
+
+/* ---------- footer ---------- */
+.footer{
+  background:rgba(255,255,255,.03);
+  border-top:1px solid rgba(255,255,255,.08);
+  color:var(--panel-text-dim);font-size:12px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:6px 14px;min-height:34px;flex-wrap:wrap;
+}
+.timer{font-variant-numeric:tabular-nums;color:var(--panel-text);font-weight:700;font-size:14px;}
+#storageIndicator{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--panel-text-dim);}
+.storage-bar-track{width:70px;height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden;flex:0 0 auto;}
+#storageBar{height:100%;width:0%;background:var(--chalk-yellow);transition:width .3s;}
+.download-link{color:var(--chalk-yellow);text-decoration:none;font-weight:700;}
+.download-link:hover{text-decoration:underline;}
+
+/* result modal */
+#resultBox{
+  position:fixed;inset:0;background:rgba(10,8,6,.75);display:none;align-items:center;justify-content:center;z-index:50;
+}
+#resultBox.show{display:flex;}
+.result-card{
+  background:#171b21;border:2px solid var(--wood-1);border-radius:16px;padding:20px;max-width:min(92vw,560px);
+  color:var(--panel-text);box-shadow:0 20px 50px rgba(0,0,0,.6);
+}
+.result-card h3{margin:0 0 12px;color:var(--chalk-yellow);}
+.result-card video{width:100%;border-radius:10px;margin-bottom:12px;background:#000;}
+.result-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+#linkBox{
+  position:fixed;inset:0;background:rgba(10,8,6,.75);display:none;align-items:center;justify-content:center;z-index:50;
+}
+#linkBox.show{display:flex;}
+
+/* toast */
+#toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);background:#171b21;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;box-shadow:0 6px 16px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;}
+#toast.show{opacity:1;}
+
+@media (max-width:720px){
+  .brand{font-size:15px;}
+  button.tool{width:34px;height:34px;font-size:15px;}
+  .toolbar{gap:6px;padding:6px 8px;}
+  select#quality{font-size:11px;}
+}
+
+/* ---------- insecure-context warning banner ---------- */
+#insecureBanner{
+  display:none;background:#3a2410;color:#ffd9a8;border-bottom:1px solid rgba(255,180,80,.35);
+  font-size:12px;padding:8px 14px;text-align:center;line-height:1.7;
+}
+#insecureBanner a{color:#ffb020;font-weight:700;}
+
+/* ---------- fullscreen mode board tweaks ---------- */
+#app.fs-mode .stage{padding:0;}
+#app.fs-mode .board-frame{border-radius:0;border:none;max-height:100vh;}
+
+/* ---------- media library / page strips (stacked at top of the board) ---------- */
+.top-strips{
+  position:absolute;top:0;right:0;left:0;z-index:15;
+  display:flex;flex-direction:column;
+}
+.lib-strip{
+  display:flex;gap:8px;overflow-x:auto;
+  background:rgba(10,12,15,.6);backdrop-filter:blur(6px);padding:8px 10px;
+}
+.lib-thumb{
+  position:relative;flex:0 0 auto;width:62px;height:46px;border-radius:8px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.15);cursor:pointer;background:#20242b;
+}
+.lib-thumb img{width:100%;height:100%;object-fit:cover;}
+.lib-thumb.active{border-color:var(--chalk-yellow);box-shadow:0 0 0 2px rgba(255,176,32,.3);}
+.lib-thumb .lib-x{
+  position:absolute;top:-2px;left:-2px;width:16px;height:16px;background:var(--marker-red);
+  color:#fff;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;
+}
+.lib-thumb .lib-label{
+  position:absolute;bottom:0;right:0;left:0;background:rgba(0,0,0,.55);color:#fff;
+  font-size:9px;text-align:center;padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#pageLabel{cursor:pointer;}
+
+/* ---------- role select ---------- */
+#roleScreen{
+  position:fixed;inset:0;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255,176,32,.08), transparent 55%),
+    radial-gradient(circle at 50% 90%, rgba(124,140,255,.06), transparent 50%),
+    #0a0c10;
+  display:flex;align-items:center;justify-content:center;z-index:100;color:#f2f5f8;
+}
+.role-card{text-align:center;max-width:560px;padding:20px;}
+.role-card .kicker{
+  display:inline-flex;align-items:center;gap:7px;color:var(--panel-text-dim);
+  font-size:12px;font-weight:600;letter-spacing:.4px;margin-bottom:10px;
+}
+.role-card .kicker .ic{color:var(--chalk-yellow);}
+.role-card h1{font-size:30px;font-weight:800;margin:0 0 4px;letter-spacing:-.2px;}
+.role-underline{display:block;width:150px;height:10px;margin:2px auto 18px;color:var(--chalk-yellow);fill:none;stroke:currentColor;stroke-linecap:round;}
+.role-card p{color:var(--panel-text-dim);margin-bottom:30px;font-size:14px;}
+.role-choices{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;}
+.role-btn{
+  background:var(--wood-1);border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;padding:28px 32px;color:var(--panel-text);cursor:pointer;font-family:inherit;
+  display:flex;flex-direction:column;align-items:center;gap:12px;width:200px;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.role-btn:hover{transform:translateY(-5px);}
+.role-btn .badge{
+  width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,176,32,.14);color:var(--chalk-yellow);
+}
+.role-btn .badge .ic{width:30px;height:30px;stroke-width:1.7;}
+.role-btn#pickStudent .badge{background:rgba(124,140,255,.14);color:var(--accent-2);}
+.role-btn:hover#pickTeacher{border-color:rgba(255,176,32,.4);box-shadow:0 14px 32px rgba(255,176,32,.12);}
+.role-btn:hover#pickStudent{border-color:rgba(124,140,255,.4);box-shadow:0 14px 32px rgba(124,140,255,.12);}
+.role-btn b{font-size:16px;}
+.role-btn small{color:var(--panel-text-dim);font-size:12px;}
+
+/* ---------- live class (teacher) ---------- */
+.live-panel{
+  position:absolute;top:14px;left:14px;background:rgba(15,17,20,.78);backdrop-filter:blur(4px);
+  color:#fff;border-radius:14px;padding:10px 14px;font-size:12px;min-width:160px;z-index:20;
+  border:1px solid rgba(255,176,32,.35);
+}
+.live-panel.hidden{display:none;}
+.live-code{font-size:20px;font-weight:800;color:var(--chalk-yellow);letter-spacing:2px;margin:4px 0;}
+.live-panel .students{max-height:120px;overflow:auto;margin-top:6px;}
+.live-panel .students div{display:flex;align-items:center;justify-content:space-between;padding:3px 0;border-top:1px solid rgba(255,255,255,.08);}
+.live-panel .students span.dot{width:7px;height:7px;border-radius:50%;background:#5ec26a;display:inline-block;margin-left:6px;}
+.live-panel .students .hand{color:var(--chalk-yellow);margin-left:4px;}
+#chatLog .chat-msg{margin-bottom:4px;color:var(--panel-text);}
+#chatLog .chat-msg b{color:var(--chalk-yellow);}
+#chatLog .chat-msg.mine b{color:#8d98a3;}
+.kickBtn{background:none;border:none;color:#ff5470;cursor:pointer;font-size:13px;}
+.copy-code{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:8px;padding:3px 8px;font-size:11px;cursor:pointer;margin-right:6px;}
+.share-link-btn{background:rgba(255,176,32,.18);border:none;color:var(--chalk-yellow);border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;margin-top:6px;width:100%;}
+
+/* ---------- student join / viewer ---------- */
+#studentScreen{
+  position:fixed;inset:0;background:#0a0c0f;display:none;align-items:center;justify-content:center;z-index:90;color:#eef2f5;
+}
+#studentScreen.show{display:flex;}
+.join-card{background:var(--wood-1);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px;width:min(90vw,360px);text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35);}
+.join-card h2{color:var(--chalk-yellow);margin:0 0 4px;}
+.join-card p{color:#8d98a3;font-size:13px;margin-bottom:18px;}
+.join-card input{
+  width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.08);color:#fff;font-family:inherit;font-size:15px;margin-bottom:12px;text-align:center;
+}
+.join-card input::placeholder{color:#8d98a3;}
+.join-card button.pill{width:100%;justify-content:center;padding:12px;font-size:15px;}
+
+#studentViewer{position:fixed;inset:0;background:#000;display:none;align-items:center;justify-content:center;z-index:95;}
+#studentViewer.show{display:flex;}
+#studentViewer video{width:100%;height:100%;object-fit:contain;}
+.viewer-bar{position:absolute;top:0;right:0;left:0;display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:linear-gradient(180deg,rgba(0,0,0,.7),transparent);color:#fff;font-size:13px;}
+.viewer-bar button{background:var(--marker-red);color:#fff;border:none;border-radius:16px;padding:6px 14px;font-family:inherit;cursor:pointer;}
+.waiting{color:#8d98a3;font-size:13px;position:absolute;}
+#raiseHandBtn.active{background:var(--chalk-yellow);color:var(--accent-ink);}
+#studentChatPanel{
+  position:absolute;bottom:0;right:0;left:0;max-height:46vh;
+  background:rgba(15,17,20,.92);backdrop-filter:blur(10px);
+  border-top:1px solid rgba(255,255,255,.1);padding:10px;z-index:30;
+  display:flex;flex-direction:column;gap:8px;
+}
+#studentChatLog{overflow-y:auto;max-height:30vh;display:flex;flex-direction:column;gap:6px;}
+#studentChatLog .msg{background:rgba(255,255,255,.06);border-radius:10px;padding:6px 10px;font-size:12px;color:#eef2f5;max-width:85%;}
+#studentChatLog .msg.mine{align-self:flex-end;background:rgba(255,176,32,.18);}
+#studentChatLog .msg b{color:var(--chalk-yellow);font-size:11px;display:block;margin-bottom:2px;}
+#studentChatPanel input{
+  flex:1;padding:9px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.08);color:#fff;font-family:inherit;font-size:13px;
+}
+#studentChatPanel button{
+  background:var(--chalk-yellow);color:var(--accent-ink);border:none;border-radius:20px;
+  padding:9px 16px;font-family:inherit;font-weight:700;cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div id="insecureBanner">⚠️ این صفحه به‌صورت فایل محلی یا آدرس غیرامن باز شده؛ دوربین و میکروفون کار نمی‌کنند. برای فعال شدنشان باید فایل‌ها را روی یک آدرس <b>https</b> میزبانی کنی — راهنما داخل پوشه‌ی برنامه (راهنمای-نصب.md) را ببین.</div>
+
+<svg width="0" height="0" style="position:absolute">
+<defs>
+  <symbol id="ic-board" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21l4-4 4 4"/><path d="M6.5 9.5h6M6.5 12.5h4"/></symbol>
+  <symbol id="ic-seat" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.4"/><path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></symbol>
+  <symbol id="ic-broadcast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><path d="M8.3 8.3a5.2 5.2 0 000 7.4M15.7 8.3a5.2 5.2 0 010 7.4M5 5a9.8 9.8 0 000 14M19 5a9.8 9.8 0 010 14"/></symbol>
+  <symbol id="ic-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.2"/></symbol>
+  <symbol id="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.2"/></symbol>
+  <symbol id="ic-hand" viewBox="0 0 24 24"><path d="M8 12.5V5.2a1.6 1.6 0 013.2 0V11M11.2 11V4a1.6 1.6 0 013.2 0v7M14.4 11.3V5.6a1.6 1.6 0 013.2 0v8.4M17.6 12l.1 3c0 3.4-2.5 6-6.4 6-2.6 0-4-1-5.4-2.8L3 14.6a1.7 1.7 0 012.6-2.2L8 14.8"/></symbol>
+  <symbol id="ic-cam" viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="13" height="11" rx="2.2"/><path d="M15.5 10.5l6-3.2v9.4l-6-3.2z"/></symbol>
+  <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v11H9l-4 3.5v-3.5H4z"/></symbol>
+  <symbol id="ic-door" viewBox="0 0 24 24"><path d="M9 4H6a1 1 0 00-1 1v14a1 1 0 001 1h3M15 4h3a1 1 0 011 1v14a1 1 0 01-1 1h-3M9 4v16M15 12h.01"/></symbol>
+  <symbol id="ic-underline" viewBox="0 0 150 10" preserveAspectRatio="none"><path d="M2 6.5c20-6 40-6 55-3 18 4 35 3 48-2 15-5 30-3 43 2" stroke-width="3.4"/></symbol>
+</defs>
+</svg>
+
+<div id="roleScreen">
+  <div class="role-card">
+    <span class="kicker"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/></svg>تخته‌آموز</span>
+    <h1>چه نقشی داری؟</h1>
+    <svg class="role-underline"><use href="#ic-underline"/></svg>
+    <div class="role-choices">
+      <button class="role-btn" id="pickTeacher">
+        <span class="badge"><svg class="ic"><use href="#ic-board"/></svg></span>
+        <b>معلم</b><small>ساخت کلیپ / کلاس زنده</small>
+      </button>
+      <button class="role-btn" id="pickStudent">
+        <span class="badge"><svg class="ic"><use href="#ic-seat"/></svg></span>
+        <b>دانش‌آموز</b><small>ورود به کلاس با نام</small>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="studentScreen">
+  <div class="join-card">
+    <h2>ورود به کلاس</h2>
+    <p>کد کلاس را از معلم بگیر و اسمت را بنویس</p>
+    <input id="studentName" placeholder="اسم تو" maxlength="20">
+    <input id="studentCode" placeholder="کد کلاس" maxlength="10">
+    <button class="pill danger" id="joinClassBtn"><svg class="ic"><use href="#ic-door"/></svg> ورود به کلاس</button>
+  </div>
+</div>
+
+<div id="studentViewer">
+  <div class="viewer-bar">
+    <span id="viewerLabel">در حال اتصال...</span>
+    <div style="display:flex;gap:8px;">
+      <button id="raiseHandBtn"><svg class="ic"><use href="#ic-hand"/></svg> <span class="lbl">درخواست صحبت</span></button>
+      <button id="chatToggleBtn" style="position:relative;"><svg class="ic"><use href="#ic-chat"/></svg><span id="chatDot" style="display:none;position:absolute;top:2px;left:2px;width:8px;height:8px;background:var(--chalk-yellow);border-radius:50%;"></span></button>
+      <button id="endMyCamBtn" style="display:none;background:var(--marker-red);"><svg class="ic"><use href="#ic-stop"/></svg> پایان دوربین من</button>
+      <button id="leaveClassBtn">خروج</button>
+    </div>
+  </div>
+  <div class="waiting" id="waitingMsg">در انتظار شروع پخش معلم...</div>
+  <video id="viewerVideo" autoplay playsinline></video>
+  <video id="selfPreview" autoplay playsinline muted style="position:absolute;bottom:16px;left:16px;width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--chalk-yellow);display:none;"></video>
+  <div id="studentChatPanel" style="display:none;">
+    <div id="studentChatLog"></div>
+    <div style="display:flex;gap:6px;">
+      <input id="studentChatInput" placeholder="پیامت را بنویس..." maxlength="200">
+      <button id="studentChatSend">ارسال</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+  <div class="toolbar-handle" id="toolbarHandle">
+    <span>☰ ابزارها</span><span class="chev">⌄</span>
+  </div>
+  <div class="toolbar-backdrop" id="toolbarBackdrop"></div>
+  <div class="toolbar" id="toolbar">
+    <div class="brand"><span class="dot"></span><span>تخته‌آموز</span></div>
+    <div class="divider"></div>
+
+    <div class="group" id="toolGroup">
+      <button class="tool active" data-tool="pen" title="خودکار">✎</button>
+      <button class="tool" data-tool="eraser" title="پاک‌کن">⌫</button>
+      <button class="tool" data-tool="line" title="خط راست">╱</button>
+      <button class="tool" data-tool="rect" title="مستطیل">▭</button>
+      <button class="tool" data-tool="circle" title="دایره">◯</button>
+      <button class="tool" data-tool="triangle" title="مثلث">△</button>
+      <button class="tool" data-tool="pan" title="جابه‌جایی و بزرگ‌نمایی (مداد خاموش)">✋</button>
+    </div>
+    <div class="divider"></div>
+
+    <div class="group">
+      <input type="color" id="colorPicker" value="#1c2530" title="رنگ خودکار">
+      <div class="size-wrap">
+        <span id="sizeDot" style="display:inline-block;width:8px;height:8px;"></span>
+        <input type="range" id="sizeRange" min="1" max="40" value="4">
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="group">
+      <button class="pill" id="undoBtn" title="واگرد">↩ <span class="lbl">واگرد</span></button>
+      <button class="pill" id="clearBtn" title="پاک کردن تخته">🧹 <span class="lbl">پاک‌کردن</span></button>
+    </div>
+    <div class="divider"></div>
+
+    <div class="group">
+      <label class="file-btn">🖼 <span class="lbl">افزودن عکس/کتاب</span>
+        <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
+      </label>
+      <button class="pill" id="libToggle">📚 <span class="lbl">فایل‌ها</span></button>
+      <button class="pill" id="camToggle"><svg class="ic"><use href="#ic-cam"/></svg> <span class="lbl">دوربین</span></button>
+    </div>
+    <div class="divider"></div>
+
+    <div class="group">
+      <select id="quality" title="کیفیت خروجی">
+        <option value="high">کیفیت بالا (حجم بیشتر)</option>
+        <option value="med" selected>متعادل</option>
+        <option value="low">حجم کم</option>
+      </select>
+      <button class="pill" id="recordBtn"><svg class="ic" id="recIcon"><use href="#ic-rec"/></svg> <span class="lbl">شروع ضبط</span></button>
+      <button class="pill" id="liveBtn"><svg class="ic" id="liveIcon"><use href="#ic-broadcast"/></svg> <span class="lbl">کلاس آنلاین</span></button>
+      <button class="tool" id="fullscreenBtn" title="تمام‌صفحه">⛶</button>
+      <button class="tool" id="themeToggle" title="حالت شب/روز">🌙</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="board-frame" id="boardFrame">
+      <div class="board-wrap" id="boardWrap">
+        <div id="zoomLayer">
+          <canvas id="bgCanvas" width="1920" height="1080"></canvas>
+          <canvas id="drawCanvas" width="1920" height="1080"></canvas>
+        </div>
+        <div id="camBubble"><video id="camVideo" autoplay muted playsinline></video><div class="resize" id="camResize"></div></div>
+        <div class="top-strips" id="topStrips">
+          <div class="lib-strip" id="libStrip" style="display:none;"></div>
+          <div class="lib-strip" id="pageStrip" style="display:none;"></div>
+        </div>
+        <button id="zoomReset" style="display:none;">↺ ۱۰۰٪</button>
+      </div>
+      <div class="page-nav" id="pageNav" style="display:none;">
+        <button id="prevPage">◀</button>
+        <span id="pageLabel" title="نمایش همه‌ی صفحات">۱ / ۱ ▾</span>
+        <button id="nextPage">▶</button>
+      </div>
+      <div class="live-panel hidden" id="livePanel">
+        <div>کد کلاس <button class="copy-code" id="copyCode">کپی</button></div>
+        <div class="live-code" id="liveCode">------</div>
+        <button class="share-link-btn" id="shareLinkBtn">🔗 فرستادن لینک ورود</button>
+        <div id="participantCount">۰ دانش‌آموز متصل</div>
+        <div class="students" id="studentList"></div>
+        <div id="spotlightBox" style="display:none;margin-top:8px;">
+          <video id="spotlightThumb" autoplay playsinline muted style="width:100%;border-radius:8px;display:block;"></video>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+            <span id="spotlightName" style="font-size:11px;color:var(--chalk-yellow);"></span>
+            <button class="kickBtn" id="endSpotlightBtn" style="color:#ffb020;">پایان اسپاتلایت</button>
+          </div>
+        </div>
+        <div id="chatSection" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:6px;">
+          <div id="chatHeader" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+            <span><svg class="ic"><use href="#ic-chat"/></svg> چت کلاس <span id="chatUnread" style="display:none;background:var(--marker-red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-right:4px;">0</span></span>
+            <span id="chatChev" style="color:var(--panel-text-dim);">▾</span>
+          </div>
+          <div id="chatBody" style="display:none;margin-top:6px;">
+            <div id="chatLog" style="max-height:110px;overflow-y:auto;font-size:11px;margin-bottom:6px;"></div>
+            <div style="display:flex;gap:4px;">
+              <input id="chatInput" placeholder="پیام برای همه..." style="flex:1;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:inherit;font-size:11px;">
+              <button class="kickBtn" id="chatSend" style="color:var(--chalk-yellow);">ارسال</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div id="statusText">آماده — رنگ و ضخامت خودکار را تنظیم کن و شروع کن به توضیح دادن روی تخته.</div>
+    <div id="micIndicator" title="میکروفون فعال و سطح صدای دریافتی" style="display:flex;align-items:center;gap:6px;font-size:11px;">
+      <span id="micDeviceLabel" style="color:var(--panel-text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <div style="width:50px;height:8px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden;">
+        <div id="micLevelBar" style="width:0%;height:100%;background:#5fd97a;transition:width .08s linear, background .15s;"></div>
+      </div>
+    </div>
+    <div id="storageIndicator" title="فضای ذخیره‌سازی مرورگر برای این برنامه">
+      <div class="storage-bar-track"><div id="storageBar"></div></div>
+      <span id="storageText">—</span>
+    </div>
+    <div class="timer" id="timerText">۰۰:۰۰</div>
+  </div>
+</div>
+
+<div id="resultBox">
+  <div class="result-card">
+    <h3>کلیپ آماده شد 🎉</h3>
+    <video id="resultVideo" controls></video>
+    <div id="resultSize" style="margin-bottom:10px;color:var(--panel-text-dim);"></div>
+    <div class="result-actions">
+      <a class="pill danger" id="downloadLink" download="clip.webm">⬇ دانلود ویدیو</a>
+      <button class="pill" id="closeResult">بستن</button>
+    </div>
+  </div>
+</div>
+
+<div id="linkBox">
+  <div class="result-card">
+    <h3>لینک ورود به کلاس</h3>
+    <p style="color:var(--panel-text-dim);font-size:13px;margin:0 0 10px;">این لینک را برای بچه‌ها بفرست — با زدنش مستقیم وارد کلاس می‌شن.</p>
+    <input id="linkBoxInput" readonly style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:inherit;font-size:13px;margin-bottom:12px;text-align:left;direction:ltr;">
+    <div class="result-actions">
+      <button class="pill danger" id="linkBoxCopy">📋 کپی لینک</button>
+      <button class="pill" id="linkBoxClose">بستن</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const bgCanvas = document.getElementById('bgCanvas');
+// Most students join over mobile data rather than home WiFi. Mobile carrier
+// NAT is often "symmetric", which plain STUN can't traverse — the connection
+// then only succeeds by luck (e.g. certain network paths), which is what
+// looked like a "distance from the laptop" pattern. Adding a TURN relay
+// (which forwards the media when a direct P2P path can't be found) fixes
+// this for the cases STUN alone can't handle. This is a free public relay
+// meant for exactly this kind of small-scale use — fine for a class, but if
+// this app grows to many simultaneous students, a dedicated TURN server
+// would be a worthwhile upgrade later.
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ]
+};
+const drawCanvas = document.getElementById('drawCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+const drawCtx = drawCanvas.getContext('2d');
+const boardFrame = document.getElementById('boardFrame');
+const app = document.getElementById('app');
+const toast = document.getElementById('toast');
+let RES_SCALE = bgCanvas.width/1280; // keeps pen/shape thickness visually consistent as canvas resolution changes
+
+let isDark = false;
+let tool = 'pen';
+let color = document.getElementById('colorPicker').value;
+let size = parseInt(document.getElementById('sizeRange').value,10);
+
+function showToast(msg,ms=2200){
+  toast.textContent = msg; toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove('show'), ms);
+}
+function toFa(num){ return String(num).replace(/[0-9]/g, d=>'۰۱۲۳۴۵۶۷۸۹'[d]); }
+function mediaErrorMessage(err){
+  if(!window.isSecureContext) return 'دوربین و میکروفون فقط روی آدرس https کار می‌کنند — این صفحه را از لینک میزبانی‌شده باز کن، نه فایل محلی.';
+  const name = err && err.name;
+  if(name==='NotAllowedError' || name==='PermissionDeniedError') return 'اجازه داده نشد. کنار آدرس مرورگر روی آیکون قفل/تنظیمات بزن و دوربین و میکروفون را Allow کن.';
+  if(name==='NotFoundError' || name==='DevicesNotFoundError') return 'دوربین یا میکروفونی روی این دستگاه پیدا نشد.';
+  if(name==='NotReadableError') return 'دوربین یا میکروفون توسط برنامه‌ی دیگری در حال استفاده است — آن را ببند و دوباره امتحان کن.';
+  if(name==='SecurityError') return 'مرورگر به‌دلیل امنیتی اجازه نداد — صفحه را از آدرس https باز کن.';
+  return 'دسترسی به دوربین یا میکروفون ممکن نشد.';
+}
+
+/* ---------------- media library (blank board + every uploaded image/PDF stays available) ---------------- */
+let mediaLibrary = new Map(); // id -> {id,type,name,img?,pdfDoc?,pageCount,page,annotations:Map, thumb}
+let activeItemId = 'blank';
+let libCounter = 0;
+
+mediaLibrary.set('blank', {id:'blank', type:'blank', name:'تخته خالی', pageCount:1, page:1, annotations:new Map(), thumb:null});
+
+function paintBlankBoard(){
+  bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  if(isDark){
+    bgCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board-black');
+    bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+  } else {
+    bgCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board-white');
+    bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+  }
+}
+
+function drawContain(img){
+  const cw = bgCanvas.width, ch = bgCanvas.height;
+  bgCtx.fillStyle = isDark ? '#111' : '#fff';
+  bgCtx.fillRect(0,0,cw,ch);
+  const ir = img.width/img.height, cr = cw/ch;
+  let w,h;
+  if(ir>cr){ w=cw; h=cw/ir; } else { h=ch; w=ch*ir; }
+  const x=(cw-w)/2, y=(ch-h)/2;
+  bgCtx.drawImage(img,x,y,w,h);
+}
+
+async function renderPdfPageForItem(item, n){
+  const page = await item.pdfDoc.getPage(n);
+  const viewport0 = page.getViewport({scale:1});
+  const scale = Math.min(bgCanvas.width/viewport0.width, bgCanvas.height/viewport0.height);
+  const viewport = page.getViewport({scale});
+  const off = document.createElement('canvas');
+  off.width = viewport.width; off.height = viewport.height;
+  await page.render({canvasContext: off.getContext('2d'), viewport}).promise;
+  bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  bgCtx.fillStyle = isDark ? '#111' : '#fff';
+  bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+  const x=(bgCanvas.width-off.width)/2, y=(bgCanvas.height-off.height)/2;
+  bgCtx.drawImage(off, x, y);
+  document.getElementById('pageLabel').textContent = toFa(n)+' / '+toFa(item.pageCount)+' ▾';
+}
+
+async function renderBackgroundForItem(item){
+  if(item.type==='blank') paintBlankBoard();
+  else if(item.type==='image') drawContain(item.img);
+  else if(item.type==='pdf') await renderPdfPageForItem(item, item.page);
+}
+
+function saveCurrentAnnotation(){
+  const item = mediaLibrary.get(activeItemId);
+  if(!item) return;
+  item.annotations.set(item.page, drawCanvas.toDataURL());
+}
+
+async function loadItem(id){
+  const item = mediaLibrary.get(id);
+  if(!item) return;
+  saveCurrentAnnotation();
+  activeItemId = id;
+  await renderBackgroundForItem(item);
+  const saved = item.annotations.get(item.page);
+  if(saved) restoreLast(saved); else drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  document.getElementById('pageNav').style.display = item.pageCount>1 ? 'flex' : 'none';
+  if(item.pageCount<=1){ pageStripOpen=false; document.getElementById('pageStrip').style.display='none'; }
+  else if(pageStripOpen){ renderPageStrip(); }
+  renderLibraryStrip();
+  updateLivePanelOffset();
+}
+
+async function gotoPage(delta){
+  const item = mediaLibrary.get(activeItemId);
+  if(!item || item.pageCount<=1) return;
+  const n = item.page + delta;
+  if(n<1 || n>item.pageCount) return;
+  saveCurrentAnnotation();
+  item.page = n;
+  await renderBackgroundForItem(item);
+  const saved = item.annotations.get(item.page);
+  if(saved) restoreLast(saved); else drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  if(pageStripOpen) renderPageStrip();
+}
+document.getElementById('prevPage').addEventListener('click', ()=> gotoPage(-1));
+document.getElementById('nextPage').addEventListener('click', ()=> gotoPage(1));
+
+function updateLivePanelOffset(){
+  const h = document.getElementById('topStrips').offsetHeight;
+  document.getElementById('livePanel').style.top = (h>0 ? h+14 : 14)+'px';
+}
+
+function renderLibraryStrip(){
+  const strip = document.getElementById('libStrip');
+  const items = [...mediaLibrary.values()];
+  if(items.length<=1){ strip.style.display='none'; updateLivePanelOffset(); return; }
+  strip.style.display='flex';
+  strip.innerHTML='';
+  items.forEach(item=>{
+    const box = document.createElement('div');
+    box.className = 'lib-thumb'+(item.id===activeItemId ? ' active':'');
+    if(item.thumb){ const img=document.createElement('img'); img.src=item.thumb; box.appendChild(img); }
+    else { box.style.display='flex'; box.style.alignItems='center'; box.style.justifyContent='center'; box.style.fontSize='20px'; box.textContent='📋'; }
+    const label = document.createElement('div');
+    label.className='lib-label'; label.textContent=item.name;
+    box.appendChild(label);
+    box.addEventListener('click', ()=> loadItem(item.id));
+    if(item.id!=='blank'){
+      const x = document.createElement('div');
+      x.className='lib-x'; x.textContent='×'; x.title='حذف از فهرست';
+      x.addEventListener('click', ev=>{
+        ev.stopPropagation();
+        mediaLibrary.delete(item.id);
+        if(activeItemId===item.id) loadItem('blank');
+        renderLibraryStrip();
+      });
+      box.appendChild(x);
+    }
+    strip.appendChild(box);
+  });
+  updateLivePanelOffset();
+}
+document.getElementById('libToggle').addEventListener('click', ()=>{
+  const strip = document.getElementById('libStrip');
+  const willShow = strip.style.display==='none' || !strip.style.display;
+  if(willShow) renderLibraryStrip();
+  else { strip.style.display='none'; updateLivePanelOffset(); }
+});
+
+/* ---------------- page strip (jump to any page of the current book, scrollable, at the top) ---------------- */
+let pageStripOpen = false;
+async function renderPageThumb(item, n, box, label){
+  const page = await item.pdfDoc.getPage(n);
+  const vp0 = page.getViewport({scale:1});
+  const s = 90/vp0.width;
+  const vp = page.getViewport({scale:s});
+  const off = document.createElement('canvas'); off.width=vp.width; off.height=vp.height;
+  await page.render({canvasContext: off.getContext('2d'), viewport: vp}).promise;
+  const url = off.toDataURL();
+  item.pageThumbs[n-1] = url;
+  const img = document.createElement('img'); img.src = url; box.insertBefore(img, label);
+}
+function renderPageStrip(){
+  const item = mediaLibrary.get(activeItemId);
+  const strip = document.getElementById('pageStrip');
+  strip.innerHTML='';
+  if(!item || item.type!=='pdf' || item.pageCount<=1) return;
+  if(!item.pageThumbs) item.pageThumbs = new Array(item.pageCount).fill(null);
+  for(let i=1;i<=item.pageCount;i++){
+    const box = document.createElement('div');
+    box.className = 'lib-thumb'+(i===item.page ? ' active':'');
+    box.addEventListener('click', ()=> jumpToPage(item,i));
+    const label = document.createElement('div');
+    label.className='lib-label'; label.textContent = toFa(i);
+    if(item.pageThumbs[i-1]){
+      const img = document.createElement('img'); img.src = item.pageThumbs[i-1]; box.appendChild(img);
+    } else {
+      renderPageThumb(item, i, box, label);
+    }
+    box.appendChild(label);
+    strip.appendChild(box);
+  }
+  updateLivePanelOffset();
+}
+async function jumpToPage(item, n){
+  if(n===item.page){ return; }
+  saveCurrentAnnotation();
+  item.page = n;
+  await renderBackgroundForItem(item);
+  const saved = item.annotations.get(item.page);
+  if(saved) restoreLast(saved); else drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  if(pageStripOpen) renderPageStrip();
+}
+function togglePageStrip(){
+  const item = mediaLibrary.get(activeItemId);
+  if(!item || item.type!=='pdf' || item.pageCount<=1){ showToast('این فایل چند صفحه ندارد'); return; }
+  pageStripOpen = !pageStripOpen;
+  const strip = document.getElementById('pageStrip');
+  strip.style.display = pageStripOpen ? 'flex' : 'none';
+  if(pageStripOpen) renderPageStrip();
+  updateLivePanelOffset();
+}
+document.getElementById('pageLabel').addEventListener('click', togglePageStrip);
+
+/* ---------------- theme ---------------- */
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  isDark = !isDark;
+  document.getElementById('themeToggle').textContent = isDark ? '☀' : '🌙';
+  boardFrame.style.background = isDark ? '#14181e' : 'var(--wood-1)';
+  document.getElementById('colorPicker').value = isDark ? '#ffb020' : '#1c2530';
+  color = document.getElementById('colorPicker').value;
+  renderBackgroundForItem(mediaLibrary.get(activeItemId));
+  showToast(isDark ? 'حالت شب (تخته سیاه)' : 'حالت روز (تخته سفید)');
+});
+
+
+/* ---------------- tool selection ---------------- */
+document.getElementById('toolGroup').addEventListener('click', e=>{
+  const btn = e.target.closest('button.tool');
+  if(!btn) return;
+  document.querySelectorAll('#toolGroup .tool').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  tool = btn.dataset.tool;
+  document.getElementById('boardWrap').classList.toggle('pan-mode', tool==='pan');
+  if(tool==='pan') setDrawer(false);
+});
+document.getElementById('colorPicker').addEventListener('input', e=> color = e.target.value);
+document.getElementById('sizeRange').addEventListener('input', e=>{
+  size = parseInt(e.target.value,10);
+  const dot = document.getElementById('sizeDot');
+  const d = Math.max(4, Math.min(22, size));
+  dot.style.width = d+'px'; dot.style.height = d+'px';
+  dot.style.background = color;
+});
+
+/* ---------------- drawing ---------------- */
+let history = [];
+function pushHistory(){
+  history.push(drawCanvas.toDataURL());
+  if(history.length>25) history.shift();
+}
+function restoreLast(dataUrl, cb){
+  const img = new Image();
+  img.onload = ()=>{ drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height); drawCtx.drawImage(img,0,0); if(cb) cb(); };
+  img.src = dataUrl;
+}
+document.getElementById('undoBtn').addEventListener('click', ()=>{
+  if(history.length===0){ drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height); return; }
+  const last = history.pop();
+  restoreLast(last);
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  pushHistory();
+  drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  showToast('تخته پاک شد');
+});
+
+function toCanvasCoords(e){
+  const rect = drawCanvas.getBoundingClientRect();
+  const x = (e.clientX-rect.left) * (drawCanvas.width/rect.width);
+  const y = (e.clientY-rect.top) * (drawCanvas.height/rect.height);
+  return {x,y};
+}
+
+let drawing=false, startPt=null, snapshot=null, lastPt=null;
+
+/* ---- pan & pinch-zoom (hand tool) ---- */
+const boardWrap = document.getElementById('boardWrap');
+const zoomLayer = document.getElementById('zoomLayer');
+const zoomResetBtn = document.getElementById('zoomReset');
+let zoom=1, panX=0, panY=0;
+let activePointers = new Map();
+let panLast=null, pinchStartDist=null, pinchStartZoom=1, lastTapTime=0;
+
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function mid(a,b){ return {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
+function applyTransform(){
+  zoomLayer.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  zoomResetBtn.style.display = zoom>1.02 ? 'block' : 'none';
+}
+function clampPan(){
+  const cw = boardWrap.clientWidth, ch = boardWrap.clientHeight;
+  panX = Math.min(0, Math.max(-(cw*(zoom-1)), panX));
+  panY = Math.min(0, Math.max(-(ch*(zoom-1)), panY));
+}
+function zoomAt(mx,my,newZoom){
+  newZoom = Math.min(4, Math.max(1, newZoom));
+  const contentX = (mx-panX)/zoom, contentY = (my-panY)/zoom;
+  panX = mx - contentX*newZoom;
+  panY = my - contentY*newZoom;
+  zoom = newZoom;
+  clampPan();
+  applyTransform();
+}
+function resetZoom(){ zoom=1; panX=0; panY=0; applyTransform(); }
+zoomResetBtn.addEventListener('click', resetZoom);
+
+drawCanvas.addEventListener('pointerdown', e=>{
+  if(tool==='pan'){
+    drawCanvas.setPointerCapture(e.pointerId);
+    if(activePointers.size===0){
+      const now = Date.now();
+      if(now-lastTapTime<300){ resetZoom(); lastTapTime=0; return; }
+      lastTapTime = now;
+    }
+    activePointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if(activePointers.size===2){
+      const pts=[...activePointers.values()];
+      pinchStartDist = dist(pts[0],pts[1]);
+      pinchStartZoom = zoom;
+    } else if(activePointers.size===1){
+      panLast = {x:e.clientX,y:e.clientY};
+    }
+    return;
+  }
+  drawCanvas.setPointerCapture(e.pointerId);
+  drawing = true;
+  pushHistory();
+  startPt = toCanvasCoords(e);
+  lastPt = startPt;
+  if(tool==='rect'||tool==='circle'||tool==='triangle'||tool==='line'){
+    snapshot = drawCtx.getImageData(0,0,drawCanvas.width,drawCanvas.height);
+  } else {
+    drawCtx.beginPath();
+    drawCtx.moveTo(startPt.x, startPt.y);
+  }
+});
+
+drawCanvas.addEventListener('pointermove', e=>{
+  if(tool==='pan'){
+    if(!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, {x:e.clientX,y:e.clientY});
+    if(activePointers.size>=2){
+      const pts=[...activePointers.values()].slice(0,2);
+      const d = dist(pts[0],pts[1]);
+      const m = mid(pts[0],pts[1]);
+      const rect = boardWrap.getBoundingClientRect();
+      zoomAt(m.x-rect.left, m.y-rect.top, pinchStartZoom*(d/pinchStartDist));
+    } else if(activePointers.size===1 && zoom>1){
+      const p=[...activePointers.values()][0];
+      panX += p.x-panLast.x; panY += p.y-panLast.y;
+      clampPan(); applyTransform();
+      panLast = {x:p.x,y:p.y};
+    }
+    return;
+  }
+  if(!drawing) return;
+  const p = toCanvasCoords(e);
+  if(tool==='pen' || tool==='eraser'){
+    drawCtx.lineJoin='round'; drawCtx.lineCap='round';
+    drawCtx.lineWidth = (tool==='eraser' ? size*3 : size) * RES_SCALE;
+    drawCtx.globalCompositeOperation = tool==='eraser' ? 'destination-out' : 'source-over';
+    drawCtx.strokeStyle = color;
+    drawCtx.lineTo(p.x,p.y);
+    drawCtx.stroke();
+    lastPt = p;
+  } else {
+    drawCtx.putImageData(snapshot,0,0);
+    drawCtx.globalCompositeOperation='source-over';
+    drawCtx.strokeStyle = color;
+    drawCtx.lineWidth = size * RES_SCALE;
+    drawCtx.lineJoin='round'; drawCtx.lineCap='round';
+    drawShapePreview(tool, startPt, p);
+  }
+});
+
+function drawShapePreview(kind, a, b){
+  drawCtx.beginPath();
+  if(kind==='line'){
+    drawCtx.moveTo(a.x,a.y); drawCtx.lineTo(b.x,b.y);
+  } else if(kind==='rect'){
+    drawCtx.rect(Math.min(a.x,b.x), Math.min(a.y,b.y), Math.abs(b.x-a.x), Math.abs(b.y-a.y));
+  } else if(kind==='circle'){
+    const rx = Math.abs(b.x-a.x)/2, ry = Math.abs(b.y-a.y)/2;
+    const cx = (a.x+b.x)/2, cy=(a.y+b.y)/2;
+    drawCtx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+  } else if(kind==='triangle'){
+    drawCtx.moveTo((a.x+b.x)/2, a.y);
+    drawCtx.lineTo(a.x,b.y);
+    drawCtx.lineTo(b.x,b.y);
+    drawCtx.closePath();
+  }
+  drawCtx.stroke();
+}
+
+function endStroke(){
+  if(!drawing) return;
+  drawing=false;
+  drawCtx.globalCompositeOperation='source-over';
+  saveCurrentAnnotation();
+}
+function endPan(e){
+  activePointers.delete(e.pointerId);
+  if(activePointers.size<2) pinchStartDist=null;
+  if(activePointers.size===1){
+    const p=[...activePointers.values()][0];
+    panLast = {x:p.x,y:p.y};
+  }
+}
+drawCanvas.addEventListener('pointerup', e=>{ if(tool==='pan') endPan(e); else endStroke(); });
+drawCanvas.addEventListener('pointercancel', e=>{ if(tool==='pan') endPan(e); else endStroke(); });
+drawCanvas.addEventListener('pointerleave', ()=>{ if(tool==='pen'||tool==='eraser') endStroke(); });
+
+/* ---------------- file upload (adds to the media library, keeps earlier files available) ---------------- */
+document.getElementById('fileInput').addEventListener('change', async e=>{
+  const files = [...e.target.files];
+  if(!files.length) return;
+  document.getElementById('statusText').textContent = 'در حال بارگذاری فایل...';
+  for(const file of files){
+    const id = 'item'+(++libCounter);
+    if(file.type==='application/pdf'){
+      const buf = await file.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({data:buf}).promise;
+      const item = {id, type:'pdf', name:file.name.replace(/\.pdf$/i,''), pdfDoc, pageCount:pdfDoc.numPages, page:1, annotations:new Map(), thumb:null};
+      // low-res thumbnail from page 1
+      const p1 = await pdfDoc.getPage(1);
+      const vp0 = p1.getViewport({scale:1});
+      const thumbScale = 110/vp0.width;
+      const tvp = p1.getViewport({scale:thumbScale});
+      const toff = document.createElement('canvas');
+      toff.width = tvp.width; toff.height = tvp.height;
+      await p1.render({canvasContext: toff.getContext('2d'), viewport: tvp}).promise;
+      item.thumb = toff.toDataURL();
+      mediaLibrary.set(id, item);
+      await loadItem(id);
+    } else if(file.type.startsWith('image/')){
+      const url = URL.createObjectURL(file);
+      await new Promise(resolve=>{
+        const img = new Image();
+        img.onload = async ()=>{
+          const item = {id, type:'image', name:file.name.replace(/\.[^.]+$/,''), img, pageCount:1, page:1, annotations:new Map(), thumb:url};
+          mediaLibrary.set(id, item);
+          await loadItem(id);
+          resolve();
+        };
+        img.src = url;
+      });
+    }
+  }
+  showToast(files.length>1 ? 'فایل‌ها اضافه شدند' : 'فایل اضافه شد');
+  updateStorageIndicator();
+  document.getElementById('statusText').textContent = 'آماده';
+  e.target.value='';
+});
+
+/* ---------------- camera bubble ---------------- */
+const camBubble = document.getElementById('camBubble');
+const camVideo = document.getElementById('camVideo');
+let camStream = null;
+document.getElementById('camToggle').addEventListener('click', async ()=>{
+  if(camBubble.classList.contains('show')){
+    camBubble.classList.remove('show');
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+    return;
+  }
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({video:true});
+    camVideo.srcObject = camStream;
+    camBubble.classList.add('show');
+  }catch(err){
+    showToast(mediaErrorMessage(err));
+  }
+});
+
+// drag camera bubble
+(function(){
+  let dragging=false, offX=0, offY=0;
+  camBubble.addEventListener('pointerdown', e=>{
+    if(e.target.id==='camResize') return;
+    dragging=true; const r=camBubble.getBoundingClientRect();
+    offX = e.clientX-r.left; offY = e.clientY-r.top;
+    camBubble.setPointerCapture(e.pointerId);
+  });
+  camBubble.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const wrapRect = document.getElementById('boardWrap').getBoundingClientRect();
+    let left = e.clientX - wrapRect.left - offX;
+    let top = e.clientY - wrapRect.top - offY;
+    left = Math.max(0, Math.min(wrapRect.width-camBubble.offsetWidth, left));
+    top = Math.max(0, Math.min(wrapRect.height-camBubble.offsetHeight, top));
+    camBubble.style.left = left+'px'; camBubble.style.top = top+'px';
+    camBubble.style.right='auto'; camBubble.style.bottom='auto';
+  });
+  camBubble.addEventListener('pointerup', ()=> dragging=false);
+
+  let resizing=false, startSize=170, startX=0;
+  document.getElementById('camResize').addEventListener('pointerdown', e=>{
+    resizing=true; startSize=camBubble.offsetWidth; startX=e.clientX;
+    e.stopPropagation(); camBubble.setPointerCapture(e.pointerId);
+  });
+  camBubble.addEventListener('pointermove', e=>{
+    if(!resizing) return;
+    const delta = e.clientX-startX;
+    const newSize = Math.max(90, Math.min(320, startSize+delta));
+    camBubble.style.width = newSize+'px';
+    camBubble.style.height = newSize+'px';
+  });
+  window.addEventListener('pointerup', ()=>{ resizing=false; });
+})();
+
+/* ---------------- shared compositing canvas (used by recording AND live-class) ---------------- */
+const outputCanvas = document.createElement('canvas');
+outputCanvas.width = 1280; outputCanvas.height = 720;
+const outCtx = outputCanvas.getContext('2d');
+const outputStream = outputCanvas.captureStream(20); // whiteboard content is mostly static — fewer, richer frames read cleaner than 30fps at the same bitrate
+try{ outputStream.getVideoTracks()[0].contentHint = 'motion'; }catch(e){}
+function minimizeReceiverLatency(call){
+  // Chrome lets us hint the jitter buffer to hold as little as possible — without
+  // this it can grow to a second or more on so-so wifi to smooth things out,
+  // which is the 1-2s lag you're seeing between the teacher and students.
+  try{
+    const pc = call && call.peerConnection;
+    if(!pc) return;
+    pc.getReceivers().forEach(r=>{ try{ r.playoutDelayHint = 0; }catch(e){} });
+  }catch(e){}
+}
+let rafId = null, compositingOn = false;
+let recording = false, broadcasting = false;
+let sharedMicStream = null;
+let spotlightActive = false, spotlightName = '', spotlightPeerId = null, spotlightCall = null;
+let audioCtx = null, mixDest = null, micSourceNode = null, spotlightAudioSource = null, mixedAudioTrack = null;
+
+/* ---------------- mic clean-up chain (fixes harsh/clipping/uneven recorded voice) ----------------
+   Raw mic audio with autoGainControl/noiseSuppression off can clip and swing in loudness.
+   We route the mic through a compressor (evens out loud/quiet parts) and a limiter-style
+   second stage (catches any remaining peaks so they never clip into that harsh, ear-tiring sound),
+   then a small makeup-gain — before it ever reaches the recorder or the class broadcast. */
+let micCleanChain = null;
+function ensureAudioCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function getCleanMicTrack(){
+  if(!sharedMicStream) return null;
+  ensureAudioCtx();
+  if(micCleanChain && micCleanChain.sourceStream !== sharedMicStream){
+    try{ micCleanChain.source.disconnect(); }catch(e){}
+    micCleanChain = null;
+  }
+  if(!micCleanChain){
+    const source = audioCtx.createMediaStreamSource(sharedMicStream);
+    // stage 0: cut low-frequency rumble/hum that otherwise reads as background noise
+    const hpf = audioCtx.createBiquadFilter();
+    hpf.type = 'highpass'; hpf.frequency.value = 90; hpf.Q.value = 0.7;
+    // stage 0b: gently roll off the very top end. The laptop's own mic self-noise
+    // (and any residual hiss the browser's noise suppression didn't catch) lives
+    // mostly above ~8kHz, and our makeup-gain stage amplifies that noise right along
+    // with the voice — this is what was reading as a staticky "snow" texture under
+    // the voice. Human speech intelligibility barely extends past this point, so
+    // cutting it removes most of the perceived hiss without dulling the voice.
+    const hiss = audioCtx.createBiquadFilter();
+    hiss.type = 'lowpass'; hiss.frequency.value = 7500; hiss.Q.value = 0.7;
+    // stage 1: gentle compressor evens out natural voice-volume swings
+    const comp = audioCtx.createDynamicsCompressor();
+    comp.threshold.value = -26; comp.knee.value = 30; comp.ratio.value = 4;
+    comp.attack.value = 0.01; comp.release.value = 0.3;
+    // stage 2: soft limiter catches any leftover peaks so they never clip/harden.
+    const limiter = audioCtx.createDynamicsCompressor();
+    limiter.threshold.value = -2; limiter.knee.value = 10; limiter.ratio.value = 8;
+    limiter.attack.value = 0.006; limiter.release.value = 0.18;
+    const makeupGain = audioCtx.createGain();
+    makeupGain.gain.value = 1.25;
+    const dest = audioCtx.createMediaStreamDestination();
+    // Gain is applied BEFORE the limiter (not after) so any boost is still
+    // safely caught by the limiter — this lets us raise quiet laptop-mic
+    // levels without risking clipping back into that harsh/distorted sound.
+    source.connect(hpf); hpf.connect(hiss); hiss.connect(comp); comp.connect(makeupGain); makeupGain.connect(limiter); limiter.connect(dest);
+    try{ dest.stream.getAudioTracks()[0].contentHint = 'speech'; }catch(e){}
+    micCleanChain = {sourceStream: sharedMicStream, source, hpf, hiss, comp, limiter, makeupGain, dest};
+  }
+  return micCleanChain.dest.stream.getAudioTracks()[0];
+}
+
+function compositeFrame(){
+  outCtx.drawImage(bgCanvas,0,0,outputCanvas.width,outputCanvas.height);
+  outCtx.drawImage(drawCanvas,0,0,outputCanvas.width,outputCanvas.height);
+  if(camBubble.classList.contains('show') && camVideo.readyState>=2){
+    const wrapRect = document.getElementById('boardWrap').getBoundingClientRect();
+    const scaleX = outputCanvas.width/wrapRect.width, scaleY = outputCanvas.height/wrapRect.height;
+    const bx = camBubble.offsetLeft*scaleX, by = camBubble.offsetTop*scaleY;
+    const bw = camBubble.offsetWidth*scaleX, bh = camBubble.offsetHeight*scaleY;
+    outCtx.save();
+    outCtx.beginPath();
+    outCtx.arc(bx+bw/2, by+bh/2, bw/2, 0, Math.PI*2);
+    outCtx.clip();
+    outCtx.translate(bx+bw, by); outCtx.scale(-1,1); // mirror like preview
+    outCtx.drawImage(camVideo, 0, 0, bw, bh);
+    outCtx.restore();
+    outCtx.beginPath();
+    outCtx.arc(bx+bw/2, by+bh/2, bw/2, 0, Math.PI*2);
+    outCtx.lineWidth = 6; outCtx.strokeStyle = '#ffb020'; outCtx.stroke();
+  }
+  if(spotlightActive){
+    const thumb = document.getElementById('spotlightThumb');
+    if(thumb.readyState>=2){
+      const sw = outputCanvas.width*0.22, sh = sw*0.75;
+      const sx = 24, sy = outputCanvas.height - sh - 24;
+      outCtx.save();
+      outCtx.beginPath();
+      const r=12;
+      outCtx.moveTo(sx+r,sy);
+      outCtx.arcTo(sx+sw,sy,sx+sw,sy+sh,r);
+      outCtx.arcTo(sx+sw,sy+sh,sx,sy+sh,r);
+      outCtx.arcTo(sx,sy+sh,sx,sy,r);
+      outCtx.arcTo(sx,sy,sx+sw,sy,r);
+      outCtx.clip();
+      outCtx.drawImage(thumb, sx, sy, sw, sh);
+      outCtx.restore();
+      outCtx.lineWidth=4; outCtx.strokeStyle='#ffb020';
+      outCtx.strokeRect(sx,sy,sw,sh);
+      outCtx.fillStyle='rgba(20,15,10,.7)';
+      outCtx.fillRect(sx, sy+sh-26, sw, 26);
+      outCtx.fillStyle='#ffb020'; outCtx.font='16px sans-serif'; outCtx.textAlign='center';
+      outCtx.fillText(spotlightName||'دانش‌آموز', sx+sw/2, sy+sh-8);
+    }
+  }
+  rafId = requestAnimationFrame(compositeFrame);
+}
+function ensureCompositing(){
+  if(!compositingOn){ compositingOn = true; compositeFrame(); }
+}
+function stopCompositingIfIdle(){
+  if(!recording && !broadcasting && compositingOn){
+    compositingOn = false;
+    cancelAnimationFrame(rafId);
+  }
+}
+async function getSharedMic(){
+  if(!sharedMicStream){
+    try{
+      sharedMicStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:{ideal:1}, sampleRate:{ideal:48000}}});
+      const label = sharedMicStream.getAudioTracks()[0].label || 'میکروفون پیش‌فرض';
+      const labelEl = document.getElementById('micDeviceLabel');
+      if(labelEl){ labelEl.textContent = label; labelEl.title = 'میکروفون فعال: '+label; }
+      startMicLevelMeter(sharedMicStream);
+    }
+    catch(err){ showToast(mediaErrorMessage(err)); }
+  }
+  return sharedMicStream;
+}
+let micAnalyser = null, micAnalyserSource = null, micLevelRAF = null;
+function startMicLevelMeter(stream){
+  ensureAudioCtx();
+  if(micAnalyserSource){ try{ micAnalyserSource.disconnect(); }catch(e){} }
+  micAnalyserSource = audioCtx.createMediaStreamSource(stream);
+  micAnalyser = audioCtx.createAnalyser();
+  micAnalyser.fftSize = 512;
+  micAnalyserSource.connect(micAnalyser);
+  const data = new Uint8Array(micAnalyser.fftSize);
+  const bar = document.getElementById('micLevelBar');
+  if(micLevelRAF) cancelAnimationFrame(micLevelRAF);
+  (function tick(){
+    if(!micAnalyser){ return; }
+    micAnalyser.getByteTimeDomainData(data);
+    let sumSquares = 0;
+    for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sumSquares += v*v; }
+    const rms = Math.sqrt(sumSquares/data.length);
+    const pct = Math.min(100, Math.round(rms*350)); // scaled up so normal speech reads comfortably mid-bar
+    if(bar){
+      bar.style.width = pct+'%';
+      bar.style.background = pct>70 ? '#ff6b5b' : pct>6 ? '#5fd97a' : '#c9a24a';
+    }
+    micLevelRAF = requestAnimationFrame(tick);
+  })();
+}
+function stopMicLevelMeter(){
+  if(micLevelRAF) cancelAnimationFrame(micLevelRAF);
+  micLevelRAF = null;
+  if(micAnalyserSource){ try{ micAnalyserSource.disconnect(); }catch(e){} micAnalyserSource = null; }
+  micAnalyser = null;
+  const bar = document.getElementById('micLevelBar');
+  if(bar) bar.style.width = '0%';
+  const labelEl = document.getElementById('micDeviceLabel');
+  if(labelEl) labelEl.textContent = '';
+}
+function releaseMicIfIdle(){
+  if(!recording && !broadcasting && sharedMicStream){
+    sharedMicStream.getTracks().forEach(t=>t.stop());
+    sharedMicStream = null;
+    stopMicLevelMeter();
+  }
+}
+
+/* ---------------- recording ---------------- */
+let mediaRecorder=null, recChunks=[], recTimerInt=null, recStart=0;
+
+const qualityPresets = {
+  high: {bitrate: 8_000_000},
+  med:  {bitrate: 4_500_000},
+  low:  {bitrate: 2_000_000},
+};
+
+function pickMime(){
+  const opts = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  for(const o of opts){ if(MediaRecorder.isTypeSupported(o)) return o; }
+  return '';
+}
+
+async function startRecording(){
+  if(mediaRecorder && mediaRecorder.state==='recording') return;
+  recording = true;
+  // These strips float on top of the board (with a blur backdrop) to show
+  // thumbnails for switching files/pages. They were staying open from
+  // whenever a file was last uploaded, which blocked drawing near the top
+  // and hid the top of the page during recording. Start every recording
+  // with a clear board — she can still tap the library/page buttons to
+  // bring a strip back up briefly if she needs to switch mid-recording.
+  pageStripOpen = false;
+  document.getElementById('pageStrip').style.display = 'none';
+  document.getElementById('libStrip').style.display = 'none';
+  updateLivePanelOffset();
+  ensureCompositing();
+  const mic = await getSharedMic();
+  const tracks = [...outputStream.getVideoTracks()];
+  const cleanTrack = mic ? getCleanMicTrack() : null;
+  if(cleanTrack) tracks.push(cleanTrack);
+  const combined = new MediaStream(tracks);
+
+  const q = qualityPresets[document.getElementById('quality').value];
+  const mime = pickMime();
+  recChunks = [];
+  mediaRecorder = new MediaRecorder(combined, {mimeType: mime, videoBitsPerSecond: q.bitrate, audioBitsPerSecond: 128000});
+  mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) recChunks.push(e.data); };
+  mediaRecorder.onstop = ()=>{
+    recording = false;
+    releaseMicIfIdle();
+    stopCompositingIfIdle();
+    clearInterval(recTimerInt);
+    const blob = new Blob(recChunks, {type: mime || 'video/webm'});
+    const url = URL.createObjectURL(blob);
+    document.getElementById('resultVideo').src = url;
+    document.getElementById('downloadLink').href = url;
+    const mb = (blob.size/1024/1024).toFixed(1);
+    document.getElementById('resultSize').textContent = 'حجم فایل: '+mb+' مگابایت';
+    document.getElementById('resultBox').classList.add('show');
+    setLbl(document.getElementById('recordBtn'), 'شروع ضبط');
+    setIcon(document.getElementById('recIcon'), 'ic-rec');
+    document.getElementById('recordBtn').classList.remove('rec-active');
+    updateStorageIndicator();
+  };
+  mediaRecorder.start();
+  recStart = Date.now();
+  recTimerInt = setInterval(updateTimer, 500);
+  setLbl(document.getElementById('recordBtn'), 'توقف ضبط');
+  setIcon(document.getElementById('recIcon'), 'ic-stop');
+  document.getElementById('recordBtn').classList.add('rec-active');
+  showToast('ضبط شروع شد');
+}
+function stopRecording(){
+  if(mediaRecorder && mediaRecorder.state==='recording'){
+    mediaRecorder.stop();
+  }
+}
+document.getElementById('recordBtn').addEventListener('click', ()=>{
+  if(mediaRecorder && mediaRecorder.state==='recording') stopRecording(); else startRecording();
+});
+
+function updateTimer(){
+  const s = Math.floor((Date.now()-recStart)/1000);
+  const mm = String(Math.floor(s/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  document.getElementById('timerText').textContent = toFa(mm+':'+ss);
+}
+
+document.getElementById('closeResult').addEventListener('click', ()=>{
+  document.getElementById('resultBox').classList.remove('show');
+});
+
+/* ---------------- live class (teacher side) ---------------- */
+let teacherPeer = null;
+const participantConns = new Map(); // peerId -> {conn, name}
+const participantCalls = new Map(); // peerId -> call
+
+function setLbl(el, text){ const l = el.querySelector('.lbl'); if(l) l.textContent = text; else el.textContent = text; }
+function setIcon(el, symbolId){ const use = el.querySelector('use'); if(use) use.setAttribute('href','#'+symbolId); }
+function genRoomCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s=''; for(let i=0;i<5;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
+function renderParticipants(){
+  const list = document.getElementById('studentList');
+  list.innerHTML='';
+  participantConns.forEach((info, peerId)=>{
+    const row = document.createElement('div');
+    const nameSpan = document.createElement('span');
+    nameSpan.innerHTML = '<span class="dot"></span>'+info.name;
+    row.appendChild(nameSpan);
+    if(info.handRaised){
+      const hand = document.createElement('button');
+      hand.className='kickBtn hand'; hand.innerHTML='<svg class="ic"><use href="#ic-hand"/></svg>'; hand.title='رد کردن درخواست صحبت';
+      hand.onclick = ()=>{
+        info.handRaised = false;
+        if(info.conn) info.conn.send({type:'hand-declined'});
+        renderParticipants();
+      };
+      row.appendChild(hand);
+    }
+    const invite = document.createElement('button');
+    invite.className='kickBtn'; invite.innerHTML='<svg class="ic"><use href="#ic-cam"/></svg>'; invite.title='آوردن به تصویر';
+    invite.style.color = 'var(--chalk-yellow)';
+    invite.onclick = ()=>{
+      if(info.conn){
+        info.conn.send({type:'invite-cam'});
+        info.handRaised = false;
+        renderParticipants();
+        showToast('درخواست دوربین برای '+info.name+' فرستاده شد');
+      }
+    };
+    const kick = document.createElement('button');
+    kick.className='kickBtn'; kick.textContent='×'; kick.title='قطع اتصال';
+    kick.onclick = ()=>{
+      if(participantCalls.has(peerId)) participantCalls.get(peerId).close();
+      if(info.conn) info.conn.close();
+      participantConns.delete(peerId); participantCalls.delete(peerId);
+      if(spotlightPeerId===peerId) endSpotlight();
+      renderParticipants();
+    };
+    row.appendChild(invite);
+    row.appendChild(kick);
+    list.appendChild(row);
+  });
+  document.getElementById('participantCount').textContent = toFa(participantConns.size)+' دانش‌آموز متصل';
+}
+
+/* ---------------- class chat (teacher side) ---------------- */
+let chatOpen = false, chatUnreadCount = 0;
+function addChatMessage(name, text, mine){
+  const log = document.getElementById('chatLog');
+  const line = document.createElement('div');
+  line.className = 'chat-msg'+(mine?' mine':'');
+  line.innerHTML = '<b>'+name+':</b> '+text;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  if(!chatOpen && !mine){
+    chatUnreadCount++;
+    const badge = document.getElementById('chatUnread');
+    badge.style.display='inline-block'; badge.textContent = toFa(chatUnreadCount);
+  }
+}
+document.getElementById('chatHeader').addEventListener('click', ()=>{
+  chatOpen = !chatOpen;
+  document.getElementById('chatBody').style.display = chatOpen ? 'block' : 'none';
+  document.getElementById('chatChev').textContent = chatOpen ? '▴' : '▾';
+  if(chatOpen){ chatUnreadCount=0; document.getElementById('chatUnread').style.display='none'; }
+});
+function sendTeacherChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  participantConns.forEach(info=>{ if(info.conn) info.conn.send({type:'chat', from:'معلم', text}); });
+  addChatMessage('من', text, true);
+  input.value='';
+}
+document.getElementById('chatSend').addEventListener('click', sendTeacherChat);
+document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendTeacherChat(); });
+
+function ensureAudioMixer(){
+  ensureAudioCtx();
+  if(!mixDest) mixDest = audioCtx.createMediaStreamDestination();
+  if(!micSourceNode && sharedMicStream){
+    const cleanTrack = getCleanMicTrack();
+    micSourceNode = audioCtx.createMediaStreamSource(new MediaStream([cleanTrack]));
+    micSourceNode.connect(mixDest);
+  }
+}
+function currentAudioTrack(){
+  if(mixedAudioTrack) return mixedAudioTrack;
+  return getCleanMicTrack();
+}
+function switchBroadcastAudioTrack(track, excludePeerId){
+  participantCalls.forEach((call, peerId)=>{
+    const pc = call.peerConnection;
+    if(!pc) return;
+    const sender = pc.getSenders().find(s=>s.track && s.track.kind==='audio');
+    // The spotlighted student's own peer connection must NOT receive their
+    // own voice mixed back into the outgoing track — that round-trip is
+    // exactly what was producing the echo they'd hear of themselves.
+    const useTrack = (excludePeerId && peerId===excludePeerId) ? getCleanMicTrack() : track;
+    if(sender && useTrack) sender.replaceTrack(useTrack);
+  });
+}
+function beginSpotlight(peerId, stream){
+  spotlightActive = true;
+  spotlightPeerId = peerId;
+  spotlightName = (participantConns.get(peerId)||{}).name || 'دانش‌آموز';
+  document.getElementById('spotlightThumb').srcObject = stream;
+  document.getElementById('spotlightName').textContent = spotlightName;
+  document.getElementById('spotlightBox').style.display = 'block';
+  ensureAudioMixer();
+  spotlightAudioSource = audioCtx.createMediaStreamSource(stream);
+  spotlightAudioSource.connect(mixDest);
+  spotlightAudioSource.connect(audioCtx.destination);
+  mixedAudioTrack = mixDest.stream.getAudioTracks()[0];
+  try{ mixedAudioTrack.contentHint = 'speech'; }catch(e){}
+  switchBroadcastAudioTrack(mixedAudioTrack, spotlightPeerId);
+  showToast(spotlightName+' روی تصویر آمد');
+}
+function endSpotlight(){
+  if(!spotlightActive) return;
+  spotlightActive = false;
+  if(spotlightAudioSource){ spotlightAudioSource.disconnect(); spotlightAudioSource=null; }
+  mixedAudioTrack = null;
+  switchBroadcastAudioTrack(currentAudioTrack());
+  if(spotlightCall){ spotlightCall.close(); spotlightCall=null; }
+  const info = participantConns.get(spotlightPeerId);
+  if(info && info.conn) info.conn.send({type:'stop-cam'});
+  document.getElementById('spotlightThumb').srcObject = null;
+  document.getElementById('spotlightBox').style.display = 'none';
+  spotlightPeerId = null; spotlightName='';
+}
+document.getElementById('endSpotlightBtn').addEventListener('click', endSpotlight);
+
+async function startBroadcast(){
+  const mic = await getSharedMic();
+  if(!mic){ showToast('برای کلاس زنده به میکروفون نیاز است'); return; }
+  // Auto-gain is great for a quiet laptop mic during plain recording, but in a live
+  // two-way call it can fight with echo-cancellation on some laptops (speaker output
+  // picked up by the mic, re-boosted, picked up again) and produce a piercing whistle.
+  // Turn it off just for the live broadcast; recording-only use still gets AGC.
+  try{ await mic.getAudioTracks()[0].applyConstraints({autoGainControl:false}); }catch(e){}
+  ensureCompositing();
+  ensureAudioMixer();
+  broadcasting = true;
+  const code = genRoomCode();
+  const peerId = 'takhteamooz-'+code+'-t';
+  teacherPeer = new Peer(peerId, {debug:0, config: ICE_SERVERS});
+
+  teacherPeer.on('open', ()=>{
+    document.getElementById('liveCode').textContent = code;
+    document.getElementById('livePanel').classList.remove('hidden');
+    setLbl(document.getElementById('liveBtn'), 'پایان کلاس');
+    setIcon(document.getElementById('liveIcon'), 'ic-stop');
+    document.getElementById('liveBtn').classList.add('rec-active');
+    showToast('کلاس آنلاین شروع شد — کد را به بچه‌ها بده');
+  });
+
+  teacherPeer.on('connection', conn=>{
+    conn.on('data', data=>{
+      if(!data) return;
+      if(data.type==='hello'){
+        participantConns.set(data.peerId, {conn, name: data.name});
+        renderParticipants();
+        const track = currentAudioTrack();
+        const callTracks = [...outputStream.getVideoTracks()]; if(track) callTracks.push(track);
+        const call = teacherPeer.call(data.peerId, new MediaStream(callTracks));
+        participantCalls.set(data.peerId, call);
+      } else if(data.type==='cam-decline'){
+        showToast('دانش‌آموز درخواست دوربین را نپذیرفت');
+      } else if(data.type==='cam-ended'){
+        if(spotlightPeerId===data.peerId) endSpotlight();
+      } else if(data.type==='raise-hand'){
+        const info = participantConns.get(data.peerId);
+        if(info){ info.handRaised = true; renderParticipants(); showToast(info.name+' درخواست صحبت داد'); }
+      } else if(data.type==='lower-hand'){
+        const info = participantConns.get(data.peerId);
+        if(info){ info.handRaised = false; renderParticipants(); }
+      } else if(data.type==='chat'){
+        const info = participantConns.get(data.peerId);
+        addChatMessage(info ? info.name : 'دانش‌آموز', data.text, false);
+      }
+    });
+    conn.on('close', ()=>{
+      for(const [pid, info] of participantConns){ if(info.conn===conn){ participantConns.delete(pid); participantCalls.delete(pid); if(spotlightPeerId===pid) endSpotlight(); } }
+      renderParticipants();
+    });
+  });
+
+  teacherPeer.on('call', call=>{
+    // an incoming call means a student accepted a camera invite
+    call.answer();
+    call.on('stream', stream=>{
+      spotlightCall = call;
+      beginSpotlight(call.peer, stream);
+      minimizeReceiverLatency(call);
+    });
+  });
+
+  teacherPeer.on('error', err=>{
+    showToast('خطای اتصال کلاس آنلاین: '+err.type);
+  });
+}
+
+function stopBroadcast(){
+  broadcasting = false;
+  try{ if(sharedMicStream) sharedMicStream.getAudioTracks()[0].applyConstraints({autoGainControl:true}); }catch(e){}
+  endSpotlight();
+  participantCalls.forEach(c=>c.close());
+  participantConns.forEach(info=>{ if(info.conn) info.conn.close(); });
+  participantCalls.clear(); participantConns.clear();
+  renderParticipants();
+  if(teacherPeer){ teacherPeer.destroy(); teacherPeer=null; }
+  releaseMicIfIdle();
+  stopCompositingIfIdle();
+  document.getElementById('livePanel').classList.add('hidden');
+  setLbl(document.getElementById('liveBtn'), 'کلاس آنلاین');
+  setIcon(document.getElementById('liveIcon'), 'ic-broadcast');
+  document.getElementById('liveBtn').classList.remove('rec-active');
+  document.getElementById('chatLog').innerHTML='';
+  chatUnreadCount = 0;
+  document.getElementById('chatUnread').style.display='none';
+}
+
+document.getElementById('liveBtn').addEventListener('click', ()=>{
+  if(broadcasting) stopBroadcast(); else startBroadcast();
+});
+document.getElementById('copyCode').addEventListener('click', ()=>{
+  const code = document.getElementById('liveCode').textContent;
+  navigator.clipboard?.writeText(code).then(()=> showToast('کد کپی شد')).catch(()=>{});
+});
+
+/* ---------------- live class (student side) ---------------- */
+let studentPeer = null, studentConn = null, teacherFullId = null, myCamStream = null, myPeerId = null;
+let handRaised = false;
+
+document.getElementById('joinClassBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('studentName').value.trim();
+  const code = document.getElementById('studentCode').value.trim().toUpperCase();
+  if(!name || !code){ showToast('اسم و کد کلاس را وارد کن'); return; }
+  document.getElementById('studentScreen').classList.remove('show');
+  document.getElementById('studentViewer').classList.add('show');
+  document.getElementById('viewerLabel').textContent = 'کلاس '+code+' — '+name;
+  document.getElementById('waitingMsg').style.display='block';
+  teacherFullId = 'takhteamooz-'+code+'-t';
+
+  studentPeer = new Peer({debug:0, config: ICE_SERVERS});
+  studentPeer.on('open', myId=>{
+    myPeerId = myId;
+    studentConn = studentPeer.connect(teacherFullId, {reliable:true});
+    studentConn.on('open', ()=> studentConn.send({type:'hello', name, peerId: myId}));
+    studentConn.on('data', data=>{
+      if(!data) return;
+      if(data.type==='invite-cam') handleCamInvite();
+      if(data.type==='stop-cam') stopMyCam(false);
+      if(data.type==='hand-declined'){
+        handRaised = false;
+        const btn = document.getElementById('raiseHandBtn');
+        btn.classList.remove('active'); setLbl(btn, 'درخواست صحبت');
+        showToast('معلم الان نمی‌تونه — دوباره امتحان کن');
+      }
+      if(data.type==='chat') addStudentChatMessage(data.from||'معلم', data.text, false);
+    });
+    studentConn.on('error', ()=> showToast('اتصال به کلاس برقرار نشد — کد را بررسی کن'));
+  });
+  studentPeer.on('call', call=>{
+    call.answer();
+    call.on('stream', stream=>{
+      document.getElementById('waitingMsg').style.display='none';
+      const v = document.getElementById('viewerVideo');
+      v.srcObject = stream;
+      minimizeReceiverLatency(call);
+    });
+  });
+  studentPeer.on('error', err=>{
+    showToast('اتصال ناموفق: کد کلاس را دوباره بررسی کن');
+  });
+});
+
+async function handleCamInvite(){
+  handRaised = false;
+  document.getElementById('raiseHandBtn').classList.remove('active');
+  setLbl(document.getElementById('raiseHandBtn'), 'درخواست صحبت');
+  const ok = confirm('معلم می‌خواد دوربین و صدات روشن بشه و بقیه‌ی کلاس ببیننت. قبول می‌کنی؟');
+  if(!ok){ studentConn?.send({type:'cam-decline', peerId: myPeerId}); return; }
+  try{
+    myCamStream = await navigator.mediaDevices.getUserMedia({video:true, audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:false, channelCount:{ideal:1}, sampleRate:{ideal:48000}}});
+  }catch(err){
+    showToast(mediaErrorMessage(err));
+    studentConn?.send({type:'cam-decline', peerId: myPeerId});
+    return;
+  }
+  try{
+    myCamStream.getVideoTracks().forEach(t=> t.contentHint='motion');
+    myCamStream.getAudioTracks().forEach(t=> t.contentHint='speech');
+  }catch(e){}
+  document.getElementById('selfPreview').srcObject = myCamStream;
+  document.getElementById('selfPreview').style.display = 'block';
+  document.getElementById('endMyCamBtn').style.display = 'inline-block';
+  studentPeer.call(teacherFullId, myCamStream);
+}
+function stopMyCam(notify){
+  if(myCamStream){ myCamStream.getTracks().forEach(t=>t.stop()); myCamStream=null; }
+  document.getElementById('selfPreview').srcObject = null;
+  document.getElementById('selfPreview').style.display = 'none';
+  document.getElementById('endMyCamBtn').style.display = 'none';
+  if(notify) studentConn?.send({type:'cam-ended', peerId: myPeerId});
+}
+document.getElementById('endMyCamBtn').addEventListener('click', ()=> stopMyCam(true));
+
+/* ---------------- raise hand (student side) ---------------- */
+document.getElementById('raiseHandBtn').addEventListener('click', ()=>{
+  handRaised = !handRaised;
+  const btn = document.getElementById('raiseHandBtn');
+  if(handRaised){
+    btn.classList.add('active'); setLbl(btn, 'در انتظار پاسخ...');
+    studentConn?.send({type:'raise-hand', peerId: myPeerId});
+    showToast('درخواستت برای معلم فرستاده شد');
+  } else {
+    btn.classList.remove('active'); setLbl(btn, 'درخواست صحبت');
+    studentConn?.send({type:'lower-hand', peerId: myPeerId});
+  }
+});
+
+/* ---------------- class chat (student side) ---------------- */
+let studentChatUnread = 0;
+function addStudentChatMessage(name, text, mine){
+  const log = document.getElementById('studentChatLog');
+  const line = document.createElement('div');
+  line.className = 'msg'+(mine?' mine':'');
+  line.innerHTML = '<b>'+name+'</b>'+text;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  const panelOpen = document.getElementById('studentChatPanel').style.display==='flex';
+  if(!panelOpen && !mine){
+    studentChatUnread++;
+    document.getElementById('chatDot').style.display='block';
+  }
+}
+document.getElementById('chatToggleBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('studentChatPanel');
+  const willShow = panel.style.display!=='flex';
+  panel.style.display = willShow ? 'flex' : 'none';
+  if(willShow){ studentChatUnread=0; document.getElementById('chatDot').style.display='none'; }
+});
+function sendStudentChat(){
+  const input = document.getElementById('studentChatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  studentConn?.send({type:'chat', peerId: myPeerId, text});
+  addStudentChatMessage('من', text, true);
+  input.value='';
+}
+document.getElementById('studentChatSend').addEventListener('click', sendStudentChat);
+document.getElementById('studentChatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendStudentChat(); });
+
+document.getElementById('leaveClassBtn').addEventListener('click', ()=>{
+  stopMyCam(false);
+  if(studentPeer){ studentPeer.destroy(); studentPeer=null; }
+  document.getElementById('viewerVideo').srcObject = null;
+  document.getElementById('studentViewer').classList.remove('show');
+  document.getElementById('roleScreen').style.display='flex';
+});
+
+/* ---------------- role selection ---------------- */
+document.getElementById('pickTeacher').addEventListener('click', ()=>{
+  document.getElementById('roleScreen').style.display='none';
+});
+document.getElementById('pickStudent').addEventListener('click', ()=>{
+  document.getElementById('roleScreen').style.display='none';
+  document.getElementById('studentScreen').classList.add('show');
+});
+
+/* ---------------- shareable join link (no install needed for students) ---------------- */
+document.getElementById('shareLinkBtn').addEventListener('click', ()=>{
+  const code = document.getElementById('liveCode').textContent;
+  const link = location.origin + location.pathname + '?role=student&code=' + code;
+  if(navigator.share){
+    navigator.share({title:'ورود به کلاس تخته‌آموز', text:'برای ورود به کلاس روی لینک بزن و اسمت را بنویس', url:link})
+      .catch(()=> openLinkBox(link));
+  } else {
+    openLinkBox(link);
+  }
+});
+function openLinkBox(link){
+  const input = document.getElementById('linkBoxInput');
+  input.value = link;
+  document.getElementById('linkBox').classList.add('show');
+  input.focus(); input.select();
+}
+document.getElementById('linkBoxCopy').addEventListener('click', ()=>{
+  const input = document.getElementById('linkBoxInput');
+  input.focus(); input.select();
+  let copied = false;
+  try{ copied = document.execCommand('copy'); }catch(e){}
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(input.value).then(()=> showToast('لینک کپی شد')).catch(()=>{
+      if(!copied) showToast('نشد کپی بشه — دستی انتخاب و کپی کن');
+    });
+  } else if(copied){
+    showToast('لینک کپی شد');
+  } else {
+    showToast('نشد کپی بشه — دستی انتخاب و کپی کن');
+  }
+});
+document.getElementById('linkBoxClose').addEventListener('click', ()=>{
+  document.getElementById('linkBox').classList.remove('show');
+});
+
+(function autoJoinFromLink(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('role')==='student'){
+    document.getElementById('roleScreen').style.display='none';
+    document.getElementById('studentScreen').classList.add('show');
+    const code = params.get('code');
+    if(code) document.getElementById('studentCode').value = code.toUpperCase();
+  }
+})();
+
+/* ---------------- fullscreen teaching mode ---------------- */
+document.getElementById('fullscreenBtn').addEventListener('click', ()=>{
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen?.().catch(()=> showToast('تمام‌صفحه پشتیبانی نمی‌شود'));
+  } else {
+    document.exitFullscreen?.();
+  }
+});
+document.addEventListener('fullscreenchange', ()=>{
+  const on = !!document.fullscreenElement;
+  app.classList.toggle('fs-mode', on);
+  document.getElementById('fullscreenBtn').title = on ? 'خروج از تمام‌صفحه' : 'تمام‌صفحه';
+});
+
+/* ---------------- toolbar drawer (icons stay tucked away until needed) ---------------- */
+const toolbarEl = document.getElementById('toolbar');
+const toolbarHandle = document.getElementById('toolbarHandle');
+const toolbarBackdrop = document.getElementById('toolbarBackdrop');
+function setDrawer(open){
+  toolbarEl.classList.toggle('open', open);
+  toolbarHandle.classList.toggle('open', open);
+  toolbarBackdrop.classList.toggle('show', open);
+}
+toolbarEl.style.top = toolbarHandle.offsetHeight + 'px';
+toolbarHandle.addEventListener('click', ()=> setDrawer(!toolbarEl.classList.contains('open')));
+toolbarBackdrop.addEventListener('click', ()=> setDrawer(false));
+drawCanvas.addEventListener('pointerdown', ()=> setDrawer(false));
+
+/* ---------------- PWA service worker ---------------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+/* ---------------- sharp rendering: match canvas resolution to the device's real pixel density ---------------- */
+function debounce(fn, ms){
+  let t;
+  return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
+}
+function resizeBoardCanvases(){
+  const rect = boardWrap.getBoundingClientRect();
+  if(rect.width<10 || rect.height<10) return;
+  const dpr = window.devicePixelRatio || 1;
+  const minW = 1920, maxW = 2400; // never below the recording target; capped so huge hi-dpi screens don't overload compositing
+  let w = Math.max(minW, Math.round(rect.width*dpr));
+  w = Math.min(maxW, w);
+  const h = Math.round(w*9/16);
+  if(bgCanvas.width===w && bgCanvas.height===h) return;
+  bgCanvas.width = w; bgCanvas.height = h;
+  drawCanvas.width = w; drawCanvas.height = h;
+  RES_SCALE = bgCanvas.width/1280;
+  const item = mediaLibrary.get(activeItemId);
+  if(item){
+    renderBackgroundForItem(item).then(()=>{
+      const saved = item.annotations.get(item.page);
+      if(saved) restoreLast(saved); else drawCtx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+    });
+  } else {
+    paintBlankBoard();
+  }
+}
+window.addEventListener('resize', debounce(resizeBoardCanvases, 250));
+window.addEventListener('orientationchange', ()=> setTimeout(resizeBoardCanvases, 300));
+document.addEventListener('fullscreenchange', ()=> setTimeout(resizeBoardCanvases, 300));
+
+/* ---------------- storage usage indicator ---------------- */
+async function ensurePersistentStorage(){
+  // Asks the browser to mark this app's storage as "persistent" so it is never
+  // auto-cleared under storage pressure. Note: the total quota number itself
+  // (the "X گیگابایت" you see) is decided by the browser/device based on free
+  // disk space — no app can force that number higher — but persistence keeps
+  // whatever quota you're given safely reserved for this app.
+  try{
+    if(navigator.storage && navigator.storage.persist){
+      await navigator.storage.persist();
+    }
+  }catch(e){}
+}
+async function updateStorageIndicator(){
+  const textEl = document.getElementById('storageText');
+  const barEl = document.getElementById('storageBar');
+  if(!navigator.storage || !navigator.storage.estimate){ textEl.textContent='—'; return; }
+  try{
+    const {usage, quota} = await navigator.storage.estimate();
+    const usedMB = (usage||0)/1024/1024;
+    const totalGB = (quota||0)/1024/1024/1024;
+    const pct = quota ? Math.min(100, (usage/quota)*100) : 0;
+    barEl.style.width = pct.toFixed(1)+'%';
+    const usedText = usedMB<1 ? (usedMB*1024).toFixed(0)+' کیلوبایت' : usedMB.toFixed(1)+' مگابایت';
+    let persistedNote = '';
+    if(navigator.storage && navigator.storage.persisted){
+      try{ persistedNote = (await navigator.storage.persisted()) ? ' ✓پایدار' : ''; }catch(e){}
+    }
+    textEl.textContent = usedText+' از '+totalGB.toFixed(1)+' گیگابایت'+persistedNote;
+  }catch(e){
+    textEl.textContent = '—';
+  }
+}
+ensurePersistentStorage().then(updateStorageIndicator);
+setInterval(updateStorageIndicator, 30000);
+
+/* ---------------- init ---------------- */
+if(!window.isSecureContext){
+  document.getElementById('insecureBanner').style.display = 'block';
+}
+document.getElementById('sizeRange').dispatchEvent(new Event('input'));
+paintBlankBoard();
+setTimeout(resizeBoardCanvases, 60);
+window.addEventListener('beforeunload', ()=>{
+  if(camStream) camStream.getTracks().forEach(t=>t.stop());
+  if(sharedMicStream) sharedMicStream.getTracks().forEach(t=>t.stop());
+  if(myCamStream) myCamStream.getTracks().forEach(t=>t.stop());
+});
+</script>
+</body>
+</html>
