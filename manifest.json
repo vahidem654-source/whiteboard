@@ -1,0 +1,19 @@
+{
+  "name": "تخته‌کلیپ | Board Clip",
+  "short_name": "تخته‌کلیپ",
+  "description": "اپلیکیشن ساخت کلیپ‌های آموزشی با تخته سفید، آپلود کتاب و ضبط صدا و تصویر",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0F1117",
+  "theme_color": "#5B5FEF",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
