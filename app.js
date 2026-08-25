@@ -19,6 +19,7 @@ const els = {
   btnUndo: $('btnUndo'), btnRedo: $('btnRedo'), btnClear: $('btnClear'),
   btnMenu: $('btnMenu'), btnTheme: $('btnTheme'), btnPanZoom: $('btnPanZoom'), btnUpload: $('btnUpload'),
   fileInput: $('fileInput'),
+  btnWebcam: $('btnWebcam'), webcamPreview: $('webcamPreview'), webcamVideo: $('webcamVideo'), webcamClose: $('webcamClose'),
   sidePanel: $('sidePanel'), scrim: $('scrim'), btnCloseSide: $('btnCloseSide'), sidePages: $('sidePages'),
   optNoise: $('optNoiseSuppression'), optAGC: $('optAutoGain'), optEcho: $('optEchoCancel'), optQuality: $('optVideoQuality'),
   btnSaveProject: $('btnSaveProject'), btnExportPNG: $('btnExportPNG'), btnResetProject: $('btnResetProject'),
@@ -38,6 +39,9 @@ let fileSurfaces = []; // { surface, page, el }
 let lastActiveSurface = null;
 let saveTimer = null;
 let pageObserver = null;
+let mountObserver = null;
+let webcamOn = false;
+let webcamStream = null;
 
 function uid(p) { return p + '_' + Math.random().toString(36).slice(2, 9); }
 
@@ -133,6 +137,106 @@ els.btnPanZoom.addEventListener('click', () => {
 });
 
 // ============================================================
+// Teacher webcam bubble - optional. When on, a small round live preview sits over
+// the stage; the recorder composites this same circle into the recorded clip. When
+// off, nothing camera-related is requested or drawn at all.
+// ============================================================
+async function enableWebcam() {
+  if (webcamOn) return;
+  if (!window.isSecureContext) { showToast('برای وبکم نیاز به HTTPS دارید'); return; }
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+  } catch (err) {
+    console.error(err);
+    showToast('دسترسی به دوربین داده نشد ❌');
+    return;
+  }
+  els.webcamVideo.srcObject = webcamStream;
+  webcamOn = true;
+  els.webcamPreview.classList.remove('hidden');
+  els.btnWebcam.classList.add('on');
+  if (!els.webcamPreview.style.left) {
+    const stageRect = els.stage.getBoundingClientRect();
+    const size = els.webcamPreview.offsetWidth || 112;
+    els.webcamPreview.style.left = Math.max(8, stageRect.width - size - 16) + 'px';
+    els.webcamPreview.style.top = Math.max(8, stageRect.height - size - 140) + 'px';
+  }
+  showToast('وبکم فعال شد؛ تصویر شما در کلیپ ضبط می‌شود 🎥');
+}
+
+function disableWebcam() {
+  if (webcamStream) { webcamStream.getTracks().forEach(t => t.stop()); webcamStream = null; }
+  els.webcamVideo.srcObject = null;
+  webcamOn = false;
+  els.webcamPreview.classList.add('hidden');
+  els.btnWebcam.classList.remove('on');
+}
+
+els.btnWebcam.addEventListener('click', () => { webcamOn ? disableWebcam() : enableWebcam(); });
+els.webcamClose.addEventListener('click', (e) => { e.stopPropagation(); disableWebcam(); });
+
+// Drag the bubble anywhere within the stage (mouse, pen, or finger - Pointer Events
+// cover all three here since it's just repositioning, not freehand drawing).
+let camDrag = null;
+els.webcamPreview.addEventListener('pointerdown', (e) => {
+  if (e.target === els.webcamClose) return;
+  els.webcamPreview.setPointerCapture(e.pointerId);
+  const r = els.webcamPreview.getBoundingClientRect();
+  camDrag = { id: e.pointerId, offX: e.clientX - r.left, offY: e.clientY - r.top };
+  els.webcamPreview.style.cursor = 'grabbing';
+});
+els.webcamPreview.addEventListener('pointermove', (e) => {
+  if (!camDrag || e.pointerId !== camDrag.id) return;
+  const stageRect = els.stage.getBoundingClientRect();
+  const size = els.webcamPreview.offsetWidth;
+  let x = e.clientX - stageRect.left - camDrag.offX;
+  let y = e.clientY - stageRect.top - camDrag.offY;
+  x = Math.max(4, Math.min(stageRect.width - size - 4, x));
+  y = Math.max(4, Math.min(stageRect.height - size - 4, y));
+  els.webcamPreview.style.left = x + 'px';
+  els.webcamPreview.style.top = y + 'px';
+});
+function endCamDrag(e) {
+  if (!camDrag || e.pointerId !== camDrag.id) return;
+  camDrag = null;
+  els.webcamPreview.style.cursor = 'grab';
+}
+els.webcamPreview.addEventListener('pointerup', endCamDrag);
+els.webcamPreview.addEventListener('pointercancel', endCamDrag);
+
+// ============================================================
+// Unified two-finger scroll for book pages. This lives in exactly ONE place
+// (the scroll container itself, not per-page) - each page's own canvas only ever
+// handles single-finger drawing and immediately backs off as soon as a second
+// finger appears anywhere. Doing panning per-page too caused real bugs whenever
+// the two fingers happened to land on different page elements.
+// ============================================================
+let filePanState = 'idle';
+let filePanLast = null;
+function avgTouches(list) {
+  let x = 0, y = 0;
+  for (let i = 0; i < list.length; i++) { x += list[i].clientX; y += list[i].clientY; }
+  return { x: x / list.length, y: y / list.length };
+}
+els.fileScroll.addEventListener('touchstart', (e) => {
+  if (ToolState.panMode) return;
+  if (e.touches.length >= 2) { filePanState = 'pan'; filePanLast = avgTouches(e.touches); e.preventDefault(); }
+}, { passive: false });
+els.fileScroll.addEventListener('touchmove', (e) => {
+  if (ToolState.panMode) return;
+  if (e.touches.length >= 2) {
+    if (filePanState !== 'pan') { filePanState = 'pan'; filePanLast = avgTouches(e.touches); }
+    const cur = avgTouches(e.touches);
+    els.fileScroll.scrollTop -= (cur.y - filePanLast.y);
+    els.fileScroll.scrollLeft -= (cur.x - filePanLast.x);
+    filePanLast = cur;
+    e.preventDefault();
+  }
+}, { passive: false });
+els.fileScroll.addEventListener('touchend', (e) => { if (e.touches.length === 0) filePanState = 'idle'; }, { passive: false });
+els.fileScroll.addEventListener('touchcancel', (e) => { if (e.touches.length === 0) filePanState = 'idle'; }, { passive: false });
+
+// ============================================================
 // Dock / navbar auto-hide while drawing
 // ============================================================
 let revealTimer = null;
@@ -143,8 +247,9 @@ function hideChrome() {
 function revealChromeSoon(delay = 1600) {
   clearTimeout(revealTimer);
   revealTimer = setTimeout(() => {
-    els.dockWrap.classList.remove('collapsed');
-    els.navbarWrap.classList.remove('collapsed');
+    els.navbarWrap.classList.remove('collapsed'); // only the page navigator auto-reveals
+    // the tools drawer stays closed until the user deliberately taps its handle -
+    // auto-popping a full-height drawer back open every few seconds was intrusive.
   }, delay);
 }
 els.stage.addEventListener('pointerdown', (e) => {
@@ -162,9 +267,10 @@ els.navbarHandle.addEventListener('click', () => els.navbarWrap.classList.toggle
 // Board <-> File switching, doc lifecycle
 // ============================================================
 function destroyFileSurfaces() {
-  fileSurfaces.forEach(f => f.surface.destroy());
+  fileSurfaces.forEach(f => f.surface && f.surface.destroy());
   fileSurfaces = [];
   if (pageObserver) { pageObserver.disconnect(); pageObserver = null; }
+  if (mountObserver) { mountObserver.disconnect(); mountObserver = null; }
 }
 
 function setActiveDoc(id, targetPageIndex) {
@@ -198,36 +304,95 @@ function setActiveDoc(id, targetPageIndex) {
 
 function onSurfaceChange() { scheduleSave(); refreshFilmThumb(); }
 
+// Creates the page "shell" (image + correctly-sized container) for every page so
+// scrolling/layout/page-jump work immediately - but does NOT create a live drawing
+// canvas yet. Canvases are expensive (one full-resolution GPU surface each), so for
+// long books creating one per page at once is what was crashing the app on phones.
+function createFilePageElement(doc, page, idx) {
+  const pageEl = document.createElement('div');
+  pageEl.className = 'file-page';
+  pageEl.dataset.index = idx;
+  pageEl.style.aspectRatio = `${page.w} / ${page.h}`;
+  const img = document.createElement('img');
+  img.src = page.src;
+  img.loading = 'lazy';
+  img.draggable = false;
+  img.alt = doc.name + ' - صفحه ' + (idx + 1);
+  pageEl.appendChild(img);
+  els.filePages.appendChild(pageEl);
+
+  const rec = { surface: null, canvasEl: null, page, el: pageEl, idx };
+  fileSurfaces.push(rec);
+  if (pageObserver) pageObserver.observe(pageEl);
+  if (mountObserver) mountObserver.observe(pageEl);
+  return pageEl;
+}
+
+// Attaches a real <canvas> + DrawSurface to a page shell - only called for pages
+// near the visible viewport (see mountObserver below).
+function mountPageSurface(doc, rec) {
+  if (rec.surface) return;
+  const canvas = document.createElement('canvas');
+  if (ToolState.panMode) canvas.classList.add('pan-mode');
+  rec.el.appendChild(canvas);
+  rec.canvasEl = canvas;
+  rec.surface = new DrawSurface(canvas, rec.page, {
+    onChange: () => { lastActiveSurface = rec.surface; onSurfaceChange(); },
+    getSize: () => { const r = rec.el.getBoundingClientRect(); return { w: r.width, h: r.height }; },
+    onIdle: () => tryUnmountIfOffscreen(rec)
+  });
+  if (!lastActiveSurface) lastActiveSurface = rec.surface;
+  requestAnimationFrame(() => rec.surface && rec.surface.resize());
+}
+
+// Detaches the canvas for a page that has scrolled far away. The stroke data lives
+// on the page object itself (untouched), so it redraws correctly if remounted later.
+// Never removes a canvas that's mid-gesture (mid-draw or mid-pan) - doing that once
+// broke two-finger scrolling by yanking away the very canvas receiving the touch.
+function unmountPageSurface(rec) {
+  if (!rec.surface) return;
+  if (rec.surface.drawing || (rec.surface.touchState && rec.surface.touchState !== 'idle')) return;
+  rec.surface.destroy();
+  rec.canvasEl && rec.canvasEl.remove();
+  rec.surface = null;
+  rec.canvasEl = null;
+}
+
+// Called right when a touch gesture on this page finishes - if the page had already
+// scrolled out of the mount margin during that gesture, unmount it now instead of
+// waiting for the next scroll event.
+function tryUnmountIfOffscreen(rec) {
+  if (!rec.surface) return;
+  const r = rec.el.getBoundingClientRect();
+  const root = els.fileScroll.getBoundingClientRect();
+  const margin = root.height || 0;
+  const offscreen = r.bottom < root.top - margin || r.top > root.bottom + margin;
+  if (offscreen) unmountPageSurface(rec);
+}
+
+// Called while a PDF is still streaming in, if the user is currently looking at it -
+// adds just the newly-rendered page without rebuilding everything already on screen.
+function appendFilePage(doc, page, idx) {
+  if (activeDocId !== doc.id || mode !== 'file') return; // not being viewed right now, nothing to update live
+  createFilePageElement(doc, page, idx);
+  els.pageJump.hidden = doc.pages.length <= 1;
+  els.pageJumpTotal.textContent = '/ ' + doc.pages.length;
+}
+
+function filmLabelText(doc) {
+  if (doc.kind === 'board') return doc.name;
+  const loaded = doc.pages.length;
+  const total = doc.totalPages || loaded;
+  return loaded < total ? `${doc.name} · در حال بارگذاری ${loaded}/${total}` : `${doc.name} · ${loaded} صفحه`;
+}
+function updateFilmLabel(doc) {
+  const item = els.film.querySelector(`[data-doc-id="${doc.id}"] .film-label`);
+  if (item) item.textContent = filmLabelText(doc);
+}
+
 function renderFileDoc(doc, jumpToIndex) {
   destroyFileSurfaces();
   els.filePages.innerHTML = '';
-  doc.pages.forEach((page, idx) => {
-    const pageEl = document.createElement('div');
-    pageEl.className = 'file-page';
-    pageEl.dataset.index = idx;
-    pageEl.style.aspectRatio = `${page.w} / ${page.h}`;
-    const img = document.createElement('img');
-    img.src = page.src;
-    img.draggable = false;
-    img.alt = doc.name + ' - صفحه ' + (idx + 1);
-    const canvas = document.createElement('canvas');
-    if (ToolState.panMode) canvas.classList.add('pan-mode');
-    pageEl.appendChild(img);
-    pageEl.appendChild(canvas);
-    els.filePages.appendChild(pageEl);
-
-    const surface = new DrawSurface(canvas, page, {
-      onChange: () => { lastActiveSurface = surface; onSurfaceChange(); },
-      getSize: () => { const r = pageEl.getBoundingClientRect(); return { w: r.width, h: r.height }; },
-      panTarget: els.fileScroll
-    });
-    fileSurfaces.push({ surface, page, el: pageEl, idx });
-  });
-
-  requestAnimationFrame(() => {
-    fileSurfaces.forEach(f => f.surface.resize());
-    lastActiveSurface = fileSurfaces[0]?.surface || lastActiveSurface;
-  });
 
   els.pageJump.hidden = doc.pages.length <= 1;
   els.pageJumpTotal.textContent = '/ ' + doc.pages.length;
@@ -242,7 +407,24 @@ function renderFileDoc(doc, jumpToIndex) {
       doc.activePageIndex = idx;
     }
   }, { root: els.fileScroll, threshold: [0.25, 0.5, 0.75] });
-  fileSurfaces.forEach(f => pageObserver.observe(f.el));
+
+  // Mounts/unmounts the actual drawing canvas as pages enter/leave a generous buffer
+  // zone around the viewport - this is what keeps memory bounded on long books.
+  mountObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const idx = Number(entry.target.dataset.index);
+      const rec = fileSurfaces.find(f => f.idx === idx);
+      if (!rec) return;
+      if (entry.isIntersecting) mountPageSurface(doc, rec);
+      else unmountPageSurface(rec);
+    });
+  }, { root: els.fileScroll, rootMargin: '100% 0px 100% 0px' });
+
+  doc.pages.forEach((page, idx) => createFilePageElement(doc, page, idx));
+
+  requestAnimationFrame(() => {
+    lastActiveSurface = fileSurfaces[0]?.surface || lastActiveSurface;
+  });
 
   const goto = jumpToIndex || 0;
   requestAnimationFrame(() => {
@@ -279,6 +461,7 @@ function renderFilm() {
   docs.forEach(doc => {
     const item = document.createElement('div');
     item.className = 'film-item' + (doc.id === activeDocId ? ' active' : '');
+    item.dataset.docId = doc.id;
     const thumbSrc = docThumbSrc(doc);
     if (thumbSrc) {
       const img = document.createElement('img'); img.src = thumbSrc; item.appendChild(img);
@@ -295,7 +478,7 @@ function renderFilm() {
     }
     const label = document.createElement('div');
     label.className = 'film-label';
-    label.textContent = doc.kind === 'board' ? doc.name : `${doc.name} · ${doc.pages.length} صفحه`;
+    label.textContent = filmLabelText(doc);
     item.appendChild(label);
 
     const closeBtn = document.createElement('button');
@@ -356,13 +539,31 @@ els.btnUpload.addEventListener('click', () => els.fileInput.click());
 els.fileInput.addEventListener('change', async (e) => {
   const files = e.target.files;
   if (!files || !files.length) return;
-  showToast('در حال بارگذاری فایل…');
-  const newDocs = await loadUploadedFiles(files);
-  if (!newDocs.length) { showToast('فایل پشتیبانی‌شده‌ای پیدا نشد'); return; }
-  docs.push(...newDocs);
-  setActiveDoc(newDocs[newDocs.length - 1].id);
-  scheduleSave();
-  showToast('فایل با موفقیت اضافه شد ✅');
+  showToast('در حال آماده‌سازی صفحه‌ی اول…');
+
+  await loadUploadedFiles(files, {
+    onFirstPage: (doc) => {
+      docs.push(doc);
+      setActiveDoc(doc.id);
+      scheduleSave();
+      const willStream = doc.totalPages && doc.totalPages > 1;
+      showToast(willStream
+        ? `صفحه‌ی ۱ آماده شد؛ بقیه‌ی ${doc.totalPages} صفحه در پس‌زمینه بارگذاری می‌شود…`
+        : 'فایل با موفقیت اضافه شد ✅');
+    },
+    onPageAdded: (doc, page, idx) => {
+      appendFilePage(doc, page, idx);
+      updateFilmLabel(doc);
+      renderSidePages();
+      scheduleSave();
+    },
+    onDone: (doc) => {
+      updateFilmLabel(doc);
+      scheduleSave();
+      if (doc.totalPages && doc.totalPages > 1) showToast('بارگذاری کتاب کامل شد ✅');
+    }
+  });
+
   e.target.value = '';
 });
 
@@ -399,7 +600,9 @@ function exportCurrentPagePNG() {
     const ctx = tmp.getContext('2d');
     const img = f.el.querySelector('img');
     ctx.drawImage(img, 0, 0, tmp.width, tmp.height);
-    f.surface.paintOnto(ctx, tmp.width, tmp.height);
+    const tmpSurface = new DrawSurface(tmp, f.page, { getSize: () => ({ w: tmp.width, h: tmp.height }) });
+    tmpSurface.paintOnto(ctx, tmp.width, tmp.height);
+    tmpSurface.destroy();
     sourceCanvas = tmp;
   }
   sourceCanvas.toBlob(blob => {
@@ -443,7 +646,7 @@ async function loadProject() {
 // ============================================================
 function handleResize() {
   if (mode === 'board' && boardSurface) boardSurface.resize();
-  if (mode === 'file') fileSurfaces.forEach(f => f.surface.resize());
+  if (mode === 'file') fileSurfaces.forEach(f => f.surface && f.surface.resize());
 }
 window.addEventListener('resize', debounce(handleResize, 150));
 window.addEventListener('orientationchange', () => setTimeout(handleResize, 300));
@@ -457,7 +660,9 @@ const recorder = new ClipRecorder({
   stageEl: els.stage,
   getMode: () => mode,
   drawCanvasEl: els.drawCanvas,
-  fileScrollEl: els.fileScroll
+  fileScrollEl: els.fileScroll,
+  getWebcamEl: () => (webcamOn ? els.webcamVideo : null),
+  getWebcamPreviewEl: () => els.webcamPreview
 });
 
 let isRecording = false;
@@ -489,7 +694,7 @@ async function startRecording() {
   els.btnRecord.classList.add('recording');
   els.recTimer.hidden = false;
   els.micMeter.hidden = false;
-  if (els.stage.requestFullscreen) { els.stage.requestFullscreen().catch(() => {}); }
+  if (els.app.requestFullscreen) { els.app.requestFullscreen().catch(() => {}); }
   recorder.onTick = (elapsed) => { els.recTimer.textContent = fmtTime(elapsed); };
   recorder.onLevel = (lvl) => { els.micFill.style.width = Math.round(lvl * 100) + '%'; };
   showToast('ضبط شروع شد 🔴');

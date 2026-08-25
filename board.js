@@ -20,12 +20,12 @@ class DrawSurface {
     this.canvas = canvas;
     this.page = page; // { strokes: [], undo: [], redo: [] }
     this.ctx = canvas.getContext('2d', { willReadFrequently: false });
-    this.opts = opts; // { getSize: () => ({w,h}), panTarget: scrollableElement, onChange }
+    this.opts = opts; // { getSize: () => ({w,h}), onChange, onIdle }
     this.drawing = false;
     this.current = null;
     this.onChange = opts.onChange || (() => {});
-    this.touchState = 'idle'; // 'idle' | 'draw' | 'pan' (touch-only state machine)
-    this.panLast = null;
+    this.touchState = 'idle'; // 'idle' | 'draw' (touch-only state machine)
+    this.onIdle = opts.onIdle || (() => {});
     this._bind();
   }
 
@@ -90,19 +90,27 @@ class DrawSurface {
     const tool = ToolState.tool;
     if (tool === 'pen' || tool === 'eraser') {
       this.current = { type: tool, color: ToolState.color, size: ToolState.size, points: [[p.x, p.y]] };
+      // Paint an initial dot immediately (in case the stroke ends without moving),
+      // and paint incrementally from here on - never a full-canvas redraw per point.
+      this._drawDot(this.current, p.x, p.y);
     } else {
       this.current = { type: tool, color: ToolState.color, size: ToolState.size, x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+      this._renderPreview();
     }
-    this._renderPreview();
   }
 
   _moveStrokeTo(clientX, clientY) {
     if (!this.drawing || !this.current) return;
     const p = this._localXY(clientX, clientY);
     const tool = this.current.type;
-    if (tool === 'pen' || tool === 'eraser') this.current.points.push([p.x, p.y]);
-    else { this.current.x1 = p.x; this.current.y1 = p.y; }
-    this._renderPreview();
+    if (tool === 'pen' || tool === 'eraser') {
+      const prev = this.current.points[this.current.points.length - 1];
+      this.current.points.push([p.x, p.y]);
+      this._drawSegment(this.current, prev, [p.x, p.y]); // O(1) - only the new bit, not the whole page
+    } else {
+      this.current.x1 = p.x; this.current.y1 = p.y;
+      this._renderPreview(); // shapes must redraw fully each move to erase the old preview box
+    }
   }
 
   _commitStroke() {
@@ -117,7 +125,7 @@ class DrawSurface {
       }
     }
     this.current = null;
-    this.redraw();
+    this.redraw(); // one full redraw at the end settles the stroke into its final smoothed look
   }
 
   _cancelStroke() {
@@ -126,10 +134,38 @@ class DrawSurface {
     this.redraw();
   }
 
-  static _avg(touchList) {
-    let x = 0, y = 0;
-    for (let i = 0; i < touchList.length; i++) { x += touchList[i].clientX; y += touchList[i].clientY; }
-    return { x: x / touchList.length, y: y / touchList.length };
+  // Fast-path incremental painting for freehand pen/eraser strokes: draws only the
+  // new bit directly onto the canvas as-is (no clearing, no replaying history), so
+  // performance stays O(1) per point no matter how much is already on the page.
+  // This is what keeps the pen smooth and responsive on slower tablets - the old
+  // "clear + redraw everything" approach got slower (and started dropping points,
+  // which looked like straight/jagged lines) the more you'd already drawn.
+  _drawDot(s, x, y) {
+    const { w, h } = this.size();
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = s.type === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.fillStyle = s.type === 'eraser' ? 'rgba(0,0,0,1)' : s.color;
+    ctx.beginPath();
+    ctx.arc(x * w, y * h, s.size / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  _drawSegment(s, p0, p1) {
+    const { w, h } = this.size();
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = s.size;
+    ctx.globalCompositeOperation = s.type === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = s.type === 'eraser' ? 'rgba(0,0,0,1)' : s.color;
+    ctx.beginPath();
+    ctx.moveTo(p0[0] * w, p0[1] * h);
+    ctx.lineTo(p1[0] * w, p1[1] * h);
+    ctx.stroke();
+    ctx.restore();
   }
 
   // ---------- Mouse / pen (Pointer Events) ----------
@@ -154,9 +190,11 @@ class DrawSurface {
   }
 
   // ---------- Fingers (native Touch Events) ----------
-  // One finger draws. A second finger appearing anywhere on screen switches
-  // to panning the given panTarget and abandons any in-progress mark - mirrors
-  // "mouse draws / wheel scrolls" independence, but for touch, using finger count.
+  // Each page only ever handles its own single-finger draw. The moment a second
+  // finger appears anywhere on screen, it immediately backs off (cancelling any
+  // in-progress mark) and leaves panning entirely to one unified handler higher up
+  // (see app.js) - trying to pan from here too caused conflicts whenever the two
+  // fingers happened to land on different page elements.
   _onTouchStart(e) {
     if (ToolState.panMode) return; // forced scroll-only: let native touch-action:pan handle it
     const n = e.touches.length;
@@ -165,30 +203,24 @@ class DrawSurface {
       const t = e.touches[0];
       this._beginStrokeAt(t.clientX, t.clientY);
       e.preventDefault();
-    } else if (n >= 2) {
-      if (this.touchState === 'draw') this._cancelStroke();
-      this.touchState = 'pan';
-      this.panLast = DrawSurface._avg(e.touches);
-      e.preventDefault();
+    } else if (n >= 2 && this.touchState === 'draw') {
+      this._cancelStroke();
+      this.touchState = 'idle';
+      this.onIdle();
     }
   }
   _onTouchMove(e) {
     if (ToolState.panMode) return;
     const n = e.touches.length;
     if (n >= 2) {
-      if (this.touchState !== 'pan') {
-        if (this.touchState === 'draw') this._cancelStroke();
-        this.touchState = 'pan';
-        this.panLast = DrawSurface._avg(e.touches);
-      } else {
-        const cur = DrawSurface._avg(e.touches);
-        const dx = cur.x - this.panLast.x, dy = cur.y - this.panLast.y;
-        this.panLast = cur;
-        const target = this.opts.panTarget;
-        if (target) { target.scrollTop -= dy; target.scrollLeft -= dx; }
+      if (this.touchState === 'draw') {
+        this._cancelStroke();
+        this.touchState = 'idle';
+        this.onIdle();
       }
-      e.preventDefault();
-    } else if (n === 1 && this.touchState === 'draw') {
+      return; // panning is handled by the container-level listener
+    }
+    if (n === 1 && this.touchState === 'draw') {
       this._moveStrokeTo(e.touches[0].clientX, e.touches[0].clientY);
       e.preventDefault();
     }
@@ -199,11 +231,10 @@ class DrawSurface {
     if (this.touchState === 'draw' && n === 0) {
       this._commitStroke();
       this.touchState = 'idle';
-    } else if (this.touchState === 'pan') {
-      if (n < 2) this.touchState = n === 0 ? 'idle' : 'pan-wait'; // wait for full release before allowing a new draw
-      if (n === 0) this.touchState = 'idle';
-    } else if (n === 0) {
+      this.onIdle();
+    } else if (n === 0 && this.touchState !== 'idle') {
       this.touchState = 'idle';
+      this.onIdle();
     }
   }
 

@@ -1,11 +1,17 @@
 class ClipRecorder {
-  constructor({ composeCanvas, stageEl, getMode, drawCanvasEl, fileScrollEl }) {
+  constructor({ composeCanvas, stageEl, getMode, drawCanvasEl, fileScrollEl, getWebcamEl, getWebcamPreviewEl }) {
     this.composeCanvas = composeCanvas;
     this.ctx = composeCanvas.getContext('2d');
     this.stageEl = stageEl;
     this.getMode = getMode; // () => 'board' | 'file'
     this.drawCanvasEl = drawCanvasEl;
     this.fileScrollEl = fileScrollEl;
+    // Optional teacher webcam overlay: getWebcamEl() returns the live <video> (or null
+    // when the feature is off), getWebcamPreviewEl() returns the on-screen bubble whose
+    // position/size we mirror onto the composited frame - same technique used for the
+    // file pages below, so the recorded circle always matches what's on screen.
+    this.getWebcamEl = getWebcamEl || (() => null);
+    this.getWebcamPreviewEl = getWebcamPreviewEl || (() => null);
     this.recording = false;
     this.paused = false;
     this.chunks = [];
@@ -139,6 +145,37 @@ class ClipRecorder {
         if (overlay) ctx.drawImage(overlay, rx, ry, rw, rh);
       });
     }
+
+    this._drawWebcam(ctx, stageRect, scaleX, scaleY);
+  }
+
+  _drawWebcam(ctx, stageRect, scaleX, scaleY) {
+    const video = this.getWebcamEl();
+    const bubbleEl = this.getWebcamPreviewEl();
+    if (!video || !bubbleEl || video.readyState < 2) return;
+    const r = bubbleEl.getBoundingClientRect();
+    const cx = (r.left - stageRect.left + r.width / 2) * scaleX;
+    const cy = (r.top - stageRect.top + r.height / 2) * scaleY;
+    const rad = (r.width / 2) * Math.min(scaleX, scaleY);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    // Mirror the feed the same way the on-screen CSS preview does
+    ctx.translate(cx, cy);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -rad, -rad, rad * 2, rad * 2);
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.lineWidth = 3 * Math.min(scaleX, scaleY);
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+    ctx.restore();
   }
 
   pause() {
