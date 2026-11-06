@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>استودیو اسلاید</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:'B Nazanin';font-weight:400;src:local('B Nazanin'),local('BNazanin'),url('BNazanin.ttf')}
+@font-face{font-family:'B Nazanin';font-weight:700;src:local('B Nazanin Bold'),local('BNazanin-Bold'),local('B Nazanin'),url('BNazanin.ttf')}
+:root{--bg:#f6efe2;--card:#fffaf0;--ink:#4a3222;--acc:#8b5a2b;--line:#dccfb8;color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-th=light]){--bg:#241a14;--card:#32251c;--ink:#f1e6d3;--acc:#c89560;--line:#5a4636;color-scheme:dark}}
+:root[data-th=dark]{--bg:#241a14;--card:#32251c;--ink:#f1e6d3;--acc:#c89560;--line:#5a4636;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Vazirmatn,Tahoma,sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+header b{font-size:18px;color:var(--acc);margin-inline-end:auto}
+button,.btn,select,input,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 11px}
+button,.btn{cursor:pointer;text-decoration:none;display:inline-block}
+button.p,.btn.p{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+button.r{background:#a63c2a;color:#fff;border-color:#a63c2a}
+main{display:grid;grid-template-columns:150px 1fr 320px;gap:12px;padding:12px;max-width:1500px;margin:auto}
+#th{display:flex;flex-direction:column;gap:6px}
+#th button{text-align:start;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#th button.on{background:var(--acc);color:var(--bg)}
+canvas{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:12px;display:block}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+#ed{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;align-self:start}
+#ed label{font-size:13px;opacity:.85;display:flex;flex-direction:column;gap:3px}
+#ed textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+video{width:100%;border-radius:12px;margin-top:8px}
+@media(max-width:900px){main{grid-template-columns:1fr}#th{flex-direction:row;overflow-x:auto}#th button{min-width:110px}}
+</style>
+</head>
+<body>
+<header>
+<b>🎞 استودیو اسلاید</b>
+<label class="btn">📂 ورود PPTX<input id="imp" type="file" accept=".pptx" hidden></label>
+<button id="ins">⬇ نصب برنامه</button>
+<button id="tg">🌓 شب/روز</button>
+</header>
+<main>
+<div id="th"></div>
+<section>
+<canvas id="cv" width="1280" height="720"></canvas>
+<div class="bar">
+<button id="pv">◀ قبلی</button><span id="no"></span><button id="nx">بعدی ▶</button>
+<select id="q"><option value="l">کیفیت: کم‌حجم (480p)</option><option value="m" selected>کیفیت: متوسط (720p)</option><option value="h">کیفیت: بالا (1080p)</option></select>
+<button id="rec" class="p">● شروع ضبط</button><span id="tm"></span>
+</div>
+<div id="out"></div>
+</section>
+<section id="ed">
+<label>عنوان<input id="t"></label>
+<label>متن<textarea id="b"></textarea></label>
+<div class="row" id="ir"><label class="btn">🖼 افزودن تصویر<input id="ai" type="file" accept="image/*" multiple hidden></label><button id="ci">حذف تصاویر</button></div>
+<div class="row">
+<label>نوع اسلاید<select id="k"><option value="text">متن</option><option value="table">جدول</option><option value="chart">نمودار</option></select></label>
+<label>فونت<select id="f"></select></label>
+</div>
+<label>اندازه فونت: <span id="sv"></span><input id="s" type="range" min="20" max="60"></label>
+<label id="dl_"><span id="dh"></span><textarea id="d"></textarea></label>
+<label id="cl_">نوع نمودار<select id="c"><option value="bar">ستونی</option><option value="line">خطی</option><option value="pie">دایره‌ای</option></select></label>
+<div class="row"><button id="add" class="p">+ اسلاید</button><button id="dup">کپی</button><button id="up">↑</button><button id="dn">↓</button><button id="del">حذف</button></div>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const FONTS=['Vazirmatn','B Nazanin','Noto Naskh Arabic','Tahoma','Georgia','Arial','Courier New'];
+const P={light:{bg:'#f6efe2',card:'#fffaf0',ink:'#4a3222',acc:'#8b5a2b',line:'#dccfb8'},dark:{bg:'#241a14',card:'#32251c',ink:'#f1e6d3',acc:'#c89560',line:'#5a4636'}};
+const C=['#8b5a2b','#c89560','#a0522d','#d2b48c','#6b4226','#deb887'];
+const Q={l:{w:854,h:480,b:350000,fps:10},m:{w:1280,h:720,b:800000,fps:12},h:{w:1920,h:1080,b:2200000,fps:15}};
+const mk=(t,b)=>({im:[],t:t||'',b:b||'',k:'text',f:'Vazirmatn',s:34,d:'',c:'bar'});
+let D,i=0,dirty=true,Rc=null,ch=[],tmr,last=null,dp;
+let th=(()=>{try{return localStorage.getItem('th')}catch(e){}})()||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+try{D=JSON.parse(localStorage.getItem('deck1'))}catch(e){}
+if(!Array.isArray(D)||!D.length)D=[mk('عنوان ارائه','متن اسلاید را اینجا بنویس')];
+const cv=$('cv'),X=cv.getContext('2d'),cur=()=>D[i];
+const R=s=>/[\u0600-\u06FF]/.test(s);
+let XL=80,XW=1120;const IMG=new WeakMap();
+function gi(it){let e=IMG.get(it);if(!e){e=new Image();e.onload=()=>{dirty=true};e.src=it.u;IMG.set(it,e)}return e}
+function imgs(Z,rtl,y0){
+ const a=Z.im||[];if(!a.length)return;
+ const bx=rtl?80:740,bw=460,gap=14,bh=(680-y0-gap*(a.length-1))/a.length;
+ a.forEach((it,j)=>{const e=gi(it);if(!e.complete||!e.naturalWidth)return;
+  const sc=Math.min(bw/e.naturalWidth,bh/e.naturalHeight),w=e.naturalWidth*sc,h=e.naturalHeight*sc;
+  X.drawImage(e,bx+(bw-w)/2,y0+j*(bh+gap)+(bh-h)/2,w,h)})}
+async function fit(bl,png){
+ try{const b=await createImageBitmap(bl),m=png?900:1100,s=Math.min(1,m/Math.max(b.width,b.height)),c=document.createElement('canvas');
+  c.width=Math.round(b.width*s);c.height=Math.round(b.height*s);const g=c.getContext('2d');
+  if(!png){g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height)}
+  g.drawImage(b,0,0,c.width,c.height);return c.toDataURL(png?'image/png':'image/jpeg',.8)}catch(e){return null}}
+async function slideImgs(z,k,x){
+ const out=[];
+ try{
+  const rf=z.file(k.replace('slides/','slides/_rels/')+'.rels');if(!rf)return out;
+  const rx=new DOMParser().parseFromString(await rf.async('string'),'application/xml'),mp={};
+  [...rx.getElementsByTagName('Relationship')].forEach(r=>mp[r.getAttribute('Id')]=r.getAttribute('Target'));
+  const ids=[...new Set([...x.getElementsByTagName('a:blip')].map(b=>b.getAttribute('r:embed')).filter(Boolean))];
+  for(const id of ids){
+   if(!mp[id])continue;
+   const path=decodeURIComponent(new URL(mp[id],'http://x/ppt/slides/').pathname.slice(1)),f=z.file(path);if(!f)continue;
+   const u=await fit(await f.async('blob'),/\.png$/i.test(path));if(u)out.push({u})}
+ }catch(e){}
+ return out}
+document.documentElement.dataset.th=th;
+FONTS.forEach(f=>$('f').add(new Option(f,f)));
+['Vazirmatn','B Nazanin','Noto Naskh Arabic'].forEach(f=>['400','bold'].forEach(w=>document.fonts&&document.fonts.load(w+' 30px "'+f+'"').then(()=>{dirty=true}).catch(()=>{})));
+
+function T(str,y,size,col,bold,Z){
+ X.fillStyle=col;X.textBaseline='top';
+ str.split('\n').forEach(par=>{
+  const rtl=R(par);X.direction=rtl?'rtl':'ltr';X.textAlign=rtl?'right':'left';
+  X.font=(bold?'bold ':'')+size+'px '+Z.f+',Tahoma,sans-serif';
+  const px=rtl?XL+XW:XL;let line='';
+  par.split(' ').forEach(w=>{const t=line?line+' '+w:w;if(X.measureText(t).width>XW&&line){X.fillText(line,px,y);y+=size*1.5;line=w}else line=t});
+  X.fillText(line,px,y);y+=size*1.5});
+ return y}
+function tbl(y0,Z,p){
+ const rows=Z.d.split('\n').filter(r=>r.trim()).map(r=>r.split(/[,\t،]/).map(c=>c.trim()));if(!rows.length)return;
+ const n=Math.max(...rows.map(r=>r.length)),cw=1120/n,rh=Math.min(80,(680-y0)/rows.length),fz=Math.min(Z.s,rh*.55),rtl=R(Z.t+Z.b+Z.d);
+ rows.forEach((r,ri)=>{for(let c=0;c<n;c++){
+  const px=rtl?1200-(c+1)*cw:80+c*cw,py=y0+ri*rh,v=r[c]||'';
+  X.fillStyle=ri?(ri%2?p.card:p.bg):p.acc;X.fillRect(px,py,cw,rh);
+  X.strokeStyle=p.line;X.strokeRect(px,py,cw,rh);
+  X.fillStyle=ri?p.ink:p.bg;X.font=(ri?'':'bold ')+fz+'px '+Z.f+',Tahoma,sans-serif';
+  X.textAlign='center';X.textBaseline='middle';X.direction=R(v)?'rtl':'ltr';
+  X.fillText(v,px+cw/2,py+rh/2,cw-12)}});
+ X.textBaseline='top'}
+function chart(y0,Z,p){
+ const rows=Z.d.split('\n').map(r=>r.split(/[,\t،]/)).filter(r=>r.length>1&&!isNaN(parseFloat(r[1])));if(!rows.length)return;
+ const v=rows.map(r=>parseFloat(r[1])),mx=Math.max(...v,1),n=v.length,top=y0+20,bot=620,L=100,Rr=1180,w=(Rr-L)/n,fz=Math.min(Z.s*.7,26);
+ X.textAlign='center';X.textBaseline='top';X.direction='ltr';X.font=fz+'px '+Z.f+',Tahoma,sans-serif';
+ if(Z.c=='pie'){
+  const tot=v.reduce((a,b)=>a+b,0)||1,cx=420,cy=(top+bot+40)/2,r=Math.min(230,(bot-top)/2);let a=-Math.PI/2;
+  v.forEach((q,j)=>{const e=a+q/tot*2*Math.PI;X.fillStyle=C[j%6];X.beginPath();X.moveTo(cx,cy);X.arc(cx,cy,r,a,e);X.fill();a=e;
+   X.fillRect(780,top+j*fz*1.7,fz,fz);X.fillStyle=p.ink;X.textAlign='left';
+   X.fillText(rows[j][0].trim()+' ('+Math.round(q/tot*100)+'%)',780+fz*1.5,top+j*fz*1.7)});
+  return}
+ X.strokeStyle=p.line;X.lineWidth=2;X.beginPath();X.moveTo(L,top);X.lineTo(L,bot);X.lineTo(Rr,bot);X.stroke();
+ const hh=bot-top-40,pts=v.map((q,j)=>[L+w*j+w/2,bot-q/mx*hh]);
+ if(Z.c=='line'){X.strokeStyle=p.acc;X.lineWidth=4;X.beginPath();pts.forEach((q,j)=>j?X.lineTo(q[0],q[1]):X.moveTo(q[0],q[1]));X.stroke()}
+ pts.forEach((q,j)=>{
+  if(Z.c=='line'){X.fillStyle=p.acc;X.beginPath();X.arc(q[0],q[1],7,0,7);X.fill()}
+  else{X.fillStyle=C[j%6];X.fillRect(q[0]-w*.35,q[1],w*.7,bot-q[1])}
+  X.fillStyle=p.ink;X.textAlign='center';X.textBaseline='bottom';X.fillText(v[j],q[0],q[1]-6);
+  X.textBaseline='top';X.fillText(rows[j][0].trim(),q[0],bot+8,w-6)});
+ X.lineWidth=1}
+function draw(){
+ const s=cv.width/1280,p=P[th],Z=cur();
+ X.setTransform(s,0,0,s,0,0);X.fillStyle=p.bg;X.fillRect(0,0,1280,720);
+ X.fillStyle=p.acc;X.fillRect(0,0,1280,14);
+ XL=80;XW=1120;
+ let y=T(Z.t,50,Math.round(Z.s*1.35),p.acc,true,Z);
+ X.fillStyle=p.line;X.fillRect(80,y,1120,4);y+=26;
+ if(Z.k=='table')tbl(y,Z,p);else if(Z.k=='chart')chart(y,Z,p);
+ else{const hi=Z.im&&Z.im.length,rt=R(Z.t+Z.b);XW=hi?600:1120;XL=hi&&rt?600:80;T(Z.b,y,Z.s,p.ink,false,Z);XL=80;XW=1120;if(hi)imgs(Z,rt,y)}
+ X.font='20px Tahoma,sans-serif';X.fillStyle=p.line;X.direction='ltr';X.textAlign='left';X.textBaseline='top';
+ X.fillText((i+1)+' / '+D.length,80,690)}
+(function loop(){if(dirty||Rc){draw();dirty=false}requestAnimationFrame(loop)})();
+
+function save(){try{localStorage.setItem('deck1',JSON.stringify(D))}catch(e){try{localStorage.setItem('deck1',JSON.stringify(D.map(z=>({...z,im:[]}))))}catch(e2){}}}
+function thumbs(){const e=$('th');e.innerHTML='';D.forEach((z,j)=>{const b=document.createElement('button');b.textContent=(j+1)+'. '+(z.t||'بدون عنوان');if(j==i)b.className='on';b.onclick=()=>{i=j;ui()};e.append(b)});$('no').textContent=(i+1)+' / '+D.length}
+function vis(){const k=cur().k;$('ir').style.display=k=='text'?'':'none';$('dl_').style.display=k=='text'?'none':'';$('cl_').style.display=k=='chart'?'':'none';$('dh').textContent=k=='table'?'جدول: هر خط یک ردیف، ستون‌ها با کاما':'نمودار: هر خط «برچسب,عدد»';$('sv').textContent=cur().s}
+function ui(){['t','b','k','f','s','d','c'].forEach(id=>$(id).value=cur()[id]);vis();thumbs();dirty=true;save()}
+['t','b','k','f','s','d','c'].forEach(id=>$(id).oninput=()=>{
+ const Z=cur();Z[id]=id=='s'?+$(id).value:$(id).value;
+ if(id=='k'&&!Z.d)Z.d=Z.k=='table'?'نام,مقدار\nالف,10\nب,20':'الف,10\nب,25\nج,15';
+ if(id=='k')$('d').value=Z.d;
+ vis();thumbs();dirty=true;save()});
+$('ai').onchange=async e=>{const Z=cur();Z.im=Z.im||[];for(const f of e.target.files){const u=await fit(f,/png/i.test(f.type));if(u)Z.im.push({u})}e.target.value='';ui()};
+$('ci').onclick=()=>{cur().im=[];ui()};
+$('add').onclick=()=>{D.splice(i+1,0,mk('عنوان جدید',''));i++;ui()};
+$('dup').onclick=()=>{D.splice(i+1,0,{...cur()});i++;ui()};
+$('del').onclick=()=>{if(D.length>1){D.splice(i,1);i=Math.min(i,D.length-1);ui()}};
+$('up').onclick=()=>{if(i>0){[D[i-1],D[i]]=[D[i],D[i-1]];i--;ui()}};
+$('dn').onclick=()=>{if(i<D.length-1){[D[i+1],D[i]]=[D[i],D[i+1]];i++;ui()}};
+const go=n=>{if(n>=0&&n<D.length){i=n;ui()}};
+$('nx').onclick=()=>go(i+1);$('pv').onclick=()=>go(i-1);
+addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.key=='ArrowLeft'||e.key==' ')go(i+1);if(e.key=='ArrowRight')go(i-1)});
+$('tg').onclick=()=>{th=th=='dark'?'light':'dark';document.documentElement.dataset.th=th;try{localStorage.setItem('th',th)}catch(e){}dirty=true};
+function size(){const q=Q[$('q').value];cv.width=q.w;cv.height=q.h;dirty=true}
+$('q').onchange=size;
+
+$('imp').onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{
+  if(typeof JSZip=='undefined')throw 0;
+  const z=await JSZip.loadAsync(f),ks=Object.keys(z.files).filter(k=>/^ppt\/slides\/slide\d+\.xml$/.test(k)).sort((a,b)=>a.match(/\d+/)-b.match(/\d+/)),out=[];
+  for(const k of ks){
+   const x=new DOMParser().parseFromString(await z.file(k).async('string'),'application/xml');
+   const ps=[...x.getElementsByTagName('a:p')].map(p=>[...p.getElementsByTagName('a:t')].map(t=>t.textContent).join('')).filter(Boolean);
+   const m=mk(ps[0],ps.slice(1).join('\n'));m.im=await slideImgs(z,k,x);out.push(m)}
+  if(!out.length)throw 0;D=out;i=0;ui()
+ }catch(err){alert('خواندن فایل ممکن نشد. فقط فایل .pptx پشتیبانی می‌شود و فقط متن اسلایدها وارد می‌شود.')}
+ e.target.value=''};
+
+async function rec(){
+ if(Rc){Rc.stop();return}
+ const q=Q[$('q').value];size();draw();
+ const mt=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));
+ if(!mt){alert('این مرورگر ضبط ویدیو را پشتیبانی نمی‌کند. از Chrome یا Safari جدید استفاده کن.');return}
+ let mic;try{mic=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){alert('دسترسی به میکروفون ممکن نشد. اجازهٔ میکروفون را بده.');return}
+ const st=cv.captureStream(q.fps);mic.getAudioTracks().forEach(t=>st.addTrack(t));
+ ch=[];Rc=new MediaRecorder(st,{mimeType:mt,videoBitsPerSecond:q.b,audioBitsPerSecond:64000});
+ Rc.ondataavailable=e=>e.data.size&&ch.push(e.data);
+ Rc.onstop=()=>{
+  clearInterval(tmr);mic.getTracks().forEach(t=>t.stop());Rc=null;
+  const ext=mt.includes('mp4')?'mp4':'webm',bl=new Blob(ch,{type:'video/'+ext}),u=URL.createObjectURL(bl);
+  last={bl,ext};
+  $('out').innerHTML='<video controls playsinline src="'+u+'"></video><div class="bar"><button id="sv2" class="p">💾 ذخیره '+ext.toUpperCase()+' ('+(bl.size/1048576).toFixed(1)+' MB)</button></div>'+(ext=='webm'?'<p>این مرورگر mp4 نمی‌دهد و خروجی webm شد؛ برای mp4 از Chrome یا Safari جدید استفاده کن.</p>':'');
+  $('sv2').onclick=async()=>{
+   try{const d=await window.claude.use('downloads');if(!d)throw 0;await d.save({filename:'presentation.'+ext,data:bl})}
+   catch(e){if(!e||e.code!='declined')alert('ذخیره از اینجا ممکن نشد. ویدیو را در پخش‌کننده بالا نگه دار و ذخیره کن.')}};
+  $('rec').textContent='● شروع ضبط';$('rec').className='p';$('tm').textContent=''};
+ i=0;ui();Rc.start(1000);
+ const t0=Date.now();tmr=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('tm').textContent='🔴 '+String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')},500);
+ $('rec').textContent='■ توقف ضبط';$('rec').className='r'}
+$('rec').onclick=rec;
+
+try{
+ const ic='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="90" fill="#8b5a2b"/><rect x="96" y="150" width="320" height="212" rx="20" fill="#f6efe2"/><circle cx="256" cy="256" r="40" fill="#8b5a2b"/></svg>');
+ const m={name:'استودیو اسلاید',short_name:'اسلاید',display:'standalone',start_url:location.href,background_color:'#f6efe2',theme_color:'#8b5a2b',icons:[{src:ic,sizes:'512x512',type:'image/svg+xml'}]};
+ const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));document.head.append(l)
+}catch(e){}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e});
+$('ins').onclick=()=>{if(dp){dp.prompt()}else alert('اندروید/کامپیوتر (Chrome/Edge): از منوی مرورگر «Install app» یا «Add to Home screen».\nآیفون (Safari): دکمهٔ Share ← Add to Home Screen.')};
+
+size();ui();
+</script>
+</body>
+</html>
